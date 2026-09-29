@@ -1,0 +1,42 @@
+# Uploads are served as static files only. Even though the application
+# refuses anything that is not an image or a PDF, a directory full of
+# user-supplied files should never be able to execute code.
+#
+# IMPORTANT: this file must not contain a <Directory> block. <Directory> is
+# only valid in the main server config; Apache rejects a .htaccess that uses
+# one and answers every request under this directory with a 500. An earlier
+# version of this file wrapped everything in <Directory /media> and took the
+# PDF downloads and the directory itself offline in production.
+#
+# `Options -Indexes` is deliberately absent. public/.htaccess already sets it
+# site-wide, and "Options" is one of the directives most often missing from
+# AllowOverride — getting that wrong is another way to 500 a whole directory.
+
+# Strongest control where PHP runs as a module. Guarded because php_flag does
+# not exist when PHP is wired up as FPM, and an unknown directive is a 500.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+# Applies regardless of how PHP is wired up: strip the interpreter and the
+# MIME type from anything that looks executable.
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phps .cgi .pl .py
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .phps
+
+# Deny outright. mod_authz_core is the Apache 2.4 provider; the fallback keeps
+# this working on 2.2 rather than throwing a 500 on an unknown directive.
+<FilesMatch "\.(?i:php|phtml|php[0-9]|phps|cgi|pl|py|htaccess)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

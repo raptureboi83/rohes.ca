@@ -2186,3 +2186,22 @@ initial commit is created immediately after this entry; the push remains
 pending a remote URL. To continue: have the user create/select the GitHub repo,
 sign in locally with GitHub CLI or VS Code Accounts (never request secrets in
 chat), add that repo as `origin`, then push `main`.
+
+## Phase 18 — Initial GitHub push completed (2026-09-29)
+
+Correction to the pending-push note in Phase 17: the user supplied
+`https://github.com/raptureboi83/rohes.ca` as the destination. Added it as the
+`origin` remote. `git ls-remote --heads origin` returned no branches before
+the push, so there was no existing remote history to overwrite.
+
+Pushed local `main` with `git push -u origin main`. Git Credential Manager
+opened the normal browser authentication flow; no password, token or private
+key was sent through chat or added to the project. GitHub accepted the branch
+and upstream tracking was configured.
+
+Verification: local `HEAD` and `origin/main` both resolve to
+`434cf688ab396754f4d0ec54c688c15e4b2b4412` (`Initial ROHES CMS project
+baseline`); `git status --short --branch` reports a clean `main` tracking
+`origin/main`. The initial commit contains the 192-file source tree audited in
+Phase 17. `.env`, `database/database.sqlite`, local uploads, dependencies and
+generated build output remain excluded.

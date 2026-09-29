@@ -2160,3 +2160,29 @@ then probe the real Apache/Nginx host. A local pass does not validate server
 For future work in this repository, continue appending detailed dated notes
 here, including the request, exact behavior changed, files/surfaces affected,
 tests, deploy/backup details, live results and anything still unresolved.
+
+## Phase 17 — Local Git repository preparation (2026-09-29)
+
+The user requested that the project be committed and pushed to GitHub. This
+workspace did not have a `.git` repository or configured remote. Initialized
+a local repository on branch `main`; global Git author name and email are
+configured. No remote URL exists yet, so the commit can be created locally but
+cannot be pushed until the user supplies or creates the destination repository
+and provides its URL. No GitHub credentials, password, token or private key
+were requested or copied into the repository.
+
+Before staging, updated `.gitignore` to exclude `/database/*.sqlite` and
+`/public/media/uploads/`. This keeps the local SQLite database, which contains
+website content and visitor contact-message PII, and user-uploaded files out
+of Git. Existing exclusions also keep `.env`, `.vscode` (including the SFTP
+configuration), `vendor`, `node_modules`, `public/build`, and `storage` runtime
+artifacts out. The environment template `.env.example`, source, migrations,
+seeders, docs, tests, and recovered legacy media remain included.
+
+Staged-file audit: 192 files; `git diff --cached --check` passes. Explicit
+checks confirm `.env`, `database/database.sqlite`, dependencies, generated Vite
+assets, `public/media/uploads`, and storage runtime files are not staged. The
+initial commit is created immediately after this entry; the push remains
+pending a remote URL. To continue: have the user create/select the GitHub repo,
+sign in locally with GitHub CLI or VS Code Accounts (never request secrets in
+chat), add that repo as `origin`, then push `main`.

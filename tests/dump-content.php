@@ -28,7 +28,6 @@ foreach (Page::orderBy('id')->get() as $p) {
         }
     }
 }
-
 echo "\n=== SETTINGS ===\n";
 foreach (Setting::orderBy('group')->orderBy('key')->get() as $st) {
     printf("%s | %s | %s\n", $st->group, $st->key, mb_substr((string) $st->value, 0, 90));

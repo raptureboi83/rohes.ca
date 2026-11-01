@@ -17,10 +17,7 @@
                 @foreach ($section->items as $item)
                     <article class="card">
                         @if ($item->image_path)
-                            {{-- .card__media--natural keeps these low-resolution
-                                 legacy photos at their true size rather than
-                                 being stretched to fill the box. --}}
-                            <div class="card__media card__media--natural">
+                            <div class="card__media">
                                 <img src="{{ media_src($item->image_path, $item->title) }}"
                                      alt="{{ $item->image_alt ?: $item->title }}"
                                      loading="lazy" width="{{ $item->meta('width') }}" height="{{ $item->meta('height') }}">

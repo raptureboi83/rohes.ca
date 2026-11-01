@@ -157,9 +157,6 @@ p:last-child { margin-bottom: 0; }
 .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
 .card__media { aspect-ratio: 16 / 10; background: var(--green-50); overflow: hidden; }
 .card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* Legacy photos are tiny; never upscale past their real size. */
-.card__media--natural { aspect-ratio: auto; }
-.card__media--natural img { height: auto; }
 .card__body { padding: 1.4rem 1.5rem 1.6rem; display: flex; flex-direction: column; flex: 1; }
 .card__title { font-size: 1.12rem; margin: 0 0 .2rem; }
 .card__subtitle { font-size: .78rem; text-transform: uppercase; letter-spacing: .09em; color: var(--earth-600); font-weight: 700; margin: 0 0 .6rem; }

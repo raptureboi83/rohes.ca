@@ -111,13 +111,13 @@ p:last-child { margin-bottom: 0; }
 .btn-row { display: flex; flex-wrap: wrap; gap: .75rem; }
 
 /* --- section shell ------------------------------------------------------- */
-.section { padding: clamp(3rem, 7vw, 5.5rem) 0; }
-.section--tight { padding: clamp(2rem, 4vw, 3rem) 0; }
+.section { padding: clamp(2rem, 5vw, 4rem) 0; }
+.section--tight { padding: clamp(1.5rem, 3vw, 2.5rem) 0; }
 .section--sand { background: var(--sand); }
 .section--green { background: var(--green-900); color: var(--green-50); }
 .section--green h2, .section--green h3 { color: #fff; }
 .section--green p { color: var(--green-200); }
-.section__head { max-width: 46rem; margin-bottom: 2.5rem; }
+.section__head { max-width: 46rem; margin-bottom: 2rem; }
 .section__head--center { margin-inline: auto; text-align: center; }
 
 /* --- hero ---------------------------------------------------------------- */

@@ -11,7 +11,7 @@
             @if ($section->intro)<p class="lede">{{ $section->intro }}</p>@endif
             {!! \App\Support\HtmlSanitizer::sanitize($section->setting('html')) !!}
             @foreach ($section->items as $item)
-                {!! \App\Support\HtmlSanitizer::sanitize($item->body) !!}
+                {!! \App\Support\HtmlSanitizer::sanitizeItemBody($item->body) !!}
             @endforeach
         </div>
     </div>

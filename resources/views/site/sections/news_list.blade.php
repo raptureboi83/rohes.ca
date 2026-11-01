@@ -13,7 +13,7 @@
                 <article class="news-item {{ $item->meta('is_archived') ? 'news-item--archived' : '' }}">
                     <span class="news-item__date">{{ $item->meta('date') ?: $item->created_at?->format('j F Y') }}</span>
                     <h3>{{ $item->title }}</h3>
-                    <p>{{ $item->body }}</p>
+                    <div class="news-item__body">{!! \App\Support\HtmlSanitizer::sanitizeItemBody($item->body) !!}</div>
 
                     @if ($item->link_url)
                         <p style="margin-top:.85rem">

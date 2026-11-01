@@ -69,6 +69,76 @@ final class HtmlSanitizer
         return $sanitized;
     }
 
+    public static function sanitizeItemBody(?string $body): string
+    {
+        if ($body === null || trim($body) === '') {
+            return '';
+        }
+
+        if (! preg_match('/^\s*[-*]\s+/m', $body)
+            && preg_match('/<\s*\/?\s*[a-z][^>]*>/i', $body)) {
+            return self::sanitize($body);
+        }
+
+        return self::sanitize(self::formatPlainText($body));
+    }
+
+    private static function formatPlainText(string $text): string
+    {
+        $paragraph = [];
+        $list = [];
+        $html = '';
+
+        $flushParagraph = static function () use (&$paragraph, &$html): void {
+            if ($paragraph === []) {
+                return;
+            }
+
+            $lines = array_map(
+                static fn (string $line): string => htmlspecialchars($line, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                $paragraph,
+            );
+            $html .= '<p>'.implode("<br>\n", $lines).'</p>';
+            $paragraph = [];
+        };
+
+        $flushList = static function () use (&$list, &$html): void {
+            if ($list === []) {
+                return;
+            }
+
+            $html .= '<ul>';
+            foreach ($list as $item) {
+                $html .= '<li>'.htmlspecialchars($item, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</li>';
+            }
+            $html .= '</ul>';
+            $list = [];
+        };
+
+        foreach (preg_split('/\r\n|\r|\n/', $text) ?: [] as $line) {
+            if (preg_match('/^\s*[-*]\s+(.+?)\s*$/', $line, $matches)) {
+                $flushParagraph();
+                $list[] = $matches[1];
+
+                continue;
+            }
+
+            if (trim($line) === '') {
+                $flushParagraph();
+
+                continue;
+            }
+
+            $flushList();
+            $paragraph[] = $line;
+        }
+
+        $flushParagraph();
+        $flushList();
+
+        return $html;
+    }
+
     private static function sanitizeNode(DOMNode $node): void
     {
         if ($node->nodeType === XML_COMMENT_NODE) {

@@ -24,8 +24,8 @@
     <div class="afield">
         <label for="{{ $fieldPrefix }}body">Description</label>
         <textarea class="atextarea" id="{{ $fieldPrefix }}body" name="body" rows="6"
-                  placeholder="The main description. Plain text; the site handles spacing and styling.">{{ old('body', $item->body) }}</textarea>
-        <p class="hint">Plain text is fine; blank lines become separate paragraphs. Rich-text sections allow sanitized HTML.</p>
+                  placeholder="The main description. Use - before each line to make a bullet list.">{{ old('body', $item->body) }}</textarea>
+        <p class="hint">Use <span class="mono">- </span> at the start of each line for bullets; blank lines between bullets are fine. Other blank lines split paragraphs.</p>
         @error('body')<p class="aerror">{{ $message }}</p>@enderror
     </div>
 

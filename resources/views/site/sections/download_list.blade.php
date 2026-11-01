@@ -18,10 +18,10 @@
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>
                             </svg>
                         </span>
-                        <span style="flex:1">
+                        <div style="flex:1">
                             <b>{{ $item->title }}</b>
-                            @if ($item->body)<span>{{ $item->body }}</span>@endif
-                        </span>
+                            @if ($item->body)<div class="download__description">{!! \App\Support\HtmlSanitizer::sanitizeItemBody($item->body) !!}</div>@endif
+                        </div>
                         <span class="pill pill--on">Download</span>
                     </a>
                 @endif

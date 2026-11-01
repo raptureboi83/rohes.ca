@@ -26,7 +26,7 @@
                         <div class="card__body">
                             @if ($item->subtitle)<p class="card__subtitle">{{ $item->subtitle }}</p>@endif
                             <h3 class="card__title">{{ $item->title }}</h3>
-                            @if ($item->body)<p class="card__text">{{ $item->body }}</p>@endif
+                            @if ($item->body)<div class="card__text">{!! \App\Support\HtmlSanitizer::sanitizeItemBody($item->body) !!}</div>@endif
                             @if ($item->link_url)
                                 <a href="{{ link_to($item->link_url) }}" class="card__link">
                                     {{ $item->link_text ?: 'Learn more' }} &rarr;

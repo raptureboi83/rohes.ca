@@ -5,8 +5,6 @@ namespace Tests\Feature;
 use App\Http\Controllers\ContactController;
 use App\Models\Media;
 use App\Models\Page;
-use App\Models\Section;
-use App\Models\SectionItem;
 use App\Models\Setting;
 use App\Models\User;
 use Database\Seeders\LegacyContentSeeder;
@@ -98,6 +96,38 @@ class CmsContentTest extends TestCase
         $this->get('/about')
             ->assertOk()
             ->assertSee('<meta property="og:image" content="'.url('/media/legacy/logo.jpeg').'">', false);
+    }
+
+    public function test_content_item_bullets_render_as_a_sanitized_list(): void
+    {
+        $page = Page::create([
+            'title' => 'Services',
+            'slug' => 'services',
+            'is_active' => true,
+        ]);
+        $templates = ['text_block', 'feature_split', 'card_grid', 'news_list', 'rich_text', 'download_list'];
+        foreach ($templates as $template) {
+            $section = $page->sections()->create([
+                'title' => 'Our process',
+                'slug' => $template,
+                'template_key' => $template,
+            ]);
+            $section->items()->create([
+                'title' => 'What to expect',
+                'body' => "A septic system needs regular attention to prevent backups, odours, and costly repairs. ROHES offers routine and emergency septic services for residential properties, cottages, and rural homes.\n\n- Septic tank pumping and cleaning\n\n- Holding-tank pumping\n\n- Grease-trap and interceptor cleaning\n\n- Septic-system inspections and maintenance recommendations\n\n- Emergency response for backups, overflows, and urgent service needs\n\n- Safe transport and approved disposal of collected waste\n\nWe work carefully around your property and can help you establish a pumping schedule based on household size, tank capacity, and usage.",
+                'link_url' => $template === 'download_list' ? '/files/guide.pdf' : null,
+            ]);
+        }
+
+        $response = $this->get('/services')
+            ->assertOk();
+
+        $safeList = '<ul><li>Septic tank pumping and cleaning</li><li>Holding-tank pumping</li>'
+            .'<li>Grease-trap and interceptor cleaning</li>'
+            .'<li>Septic-system inspections and maintenance recommendations</li>'
+            .'<li>Emergency response for backups, overflows, and urgent service needs</li>'
+            .'<li>Safe transport and approved disposal of collected waste</li></ul>';
+        $this->assertSame(count($templates), substr_count($response->getContent(), $safeList));
     }
 
     public function test_page_edit_exposes_inline_item_content_images_and_metadata(): void

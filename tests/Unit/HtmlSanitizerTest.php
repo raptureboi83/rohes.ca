@@ -51,4 +51,42 @@ class HtmlSanitizerTest extends TestCase
         $this->assertStringNotContainsString('data:text/html', $sanitized);
         $this->assertSame(1, substr_count($sanitized, '<img'));
     }
+
+    public function test_it_formats_plain_text_bullet_lists_and_escapes_list_items(): void
+    {
+        $formatted = HtmlSanitizer::sanitizeItemBody(
+            "Intro paragraph.\n\n- First point\n- <script>alert(1)</script>\n\nClosing paragraph."
+        );
+
+        $this->assertStringContainsString('<p>Intro paragraph.</p>', $formatted);
+        $this->assertStringContainsString('<ul><li>First point</li><li>&lt;script&gt;alert(1)&lt;/script&gt;</li></ul>', $formatted);
+        $this->assertStringContainsString('<p>Closing paragraph.</p>', $formatted);
+        $this->assertStringNotContainsString('<script', $formatted);
+    }
+
+    public function test_it_sanitizes_existing_html_in_item_bodies(): void
+    {
+        $formatted = HtmlSanitizer::sanitizeItemBody(
+            '<ul><li>First point</li></ul><p onclick="alert(1)">Safe</p>'
+        );
+
+        $this->assertStringContainsString('<ul><li>First point</li></ul>', $formatted);
+        $this->assertStringContainsString('<p>Safe</p>', $formatted);
+        $this->assertStringNotContainsString('onclick', $formatted);
+    }
+
+    public function test_it_keeps_bullets_with_blank_lines_in_one_list(): void
+    {
+        $formatted = HtmlSanitizer::sanitizeItemBody(
+            "Intro paragraph.\n\n- First point\n\n- Second point\n\n- Third point\n\nClosing paragraph."
+        );
+
+        $this->assertStringContainsString('<p>Intro paragraph.</p>', $formatted);
+        $this->assertStringContainsString(
+            '<ul><li>First point</li><li>Second point</li><li>Third point</li></ul>',
+            $formatted,
+        );
+        $this->assertStringContainsString('<p>Closing paragraph.</p>', $formatted);
+        $this->assertSame(1, substr_count($formatted, '<ul>'));
+    }
 }

@@ -34,6 +34,10 @@ p:last-child { margin-bottom: 0; }
 .prose ul { padding-left: 1.2rem; color: var(--ink-soft); }
 .prose li { margin-bottom: .45rem; }
 .prose img { max-width: 100%; height: auto; border-radius: var(--radius); }
+.card__text ul, .news-item__body ul { margin: .55rem 0; padding-left: 1.2rem; color: var(--ink-soft); list-style: disc; }
+.card__text li, .news-item__body li { margin-bottom: .45rem; }
+.card__text p { margin: 0 0 .75rem; }
+.card__text p:last-child { margin-bottom: 0; }
 
 /* --- header / nav -------------------------------------------------------- */
 .site-header {
@@ -117,7 +121,7 @@ p:last-child { margin-bottom: 0; }
 .section--green { background: var(--green-900); color: var(--green-50); }
 .section--green h2, .section--green h3 { color: #fff; }
 .section--green p { color: var(--green-200); }
-.section__head { max-width: 46rem; margin-bottom: 2rem; }
+.section__head { margin-bottom: 2rem; }
 .section__head--center { margin-inline: auto; text-align: center; }
 
 /* --- hero ---------------------------------------------------------------- */
@@ -230,6 +234,9 @@ p:last-child { margin-bottom: 0; }
 .download__icon { width: 42px; height: 42px; flex-shrink: 0; border-radius: 8px; background: var(--earth-100); color: var(--earth-700); display: grid; place-items: center; }
 .download b { color: var(--green-900); display: block; }
 .download span { font-size: .84rem; color: var(--muted); }
+.download__description { font-size: .84rem; color: var(--muted); }
+.download__description p { margin: .25rem 0 0; color: inherit; font-size: inherit; }
+.download__description ul { margin: .25rem 0 0; padding-left: 1.2rem; }
 
 /* --- news ---------------------------------------------------------------- */
 .news-list { display: grid; gap: 1.25rem; }
@@ -237,6 +244,7 @@ p:last-child { margin-bottom: 0; }
 .news-item__date { font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; color: var(--earth-600); font-weight: 700; }
 .news-item h3 { margin: .3rem 0 .5rem; font-size: 1.15rem; }
 .news-item p { font-size: .94rem; margin: 0; }
+.news-item__body > * + * { margin-top: .75rem; }
 .news-item--archived { opacity: .72; border-left-color: var(--line); }
 
 /* --- text block ---------------------------------------------------------- */

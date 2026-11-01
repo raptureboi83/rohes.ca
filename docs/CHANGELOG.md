@@ -2743,3 +2743,285 @@ SQLite backup; the session cleared compiled Blade views. The terminal wrapper
 did not expose the generated backup path or completion text, so no further SSH
 sessions were opened. Deployment was confirmed with a cache-busted HTTPS check
 of the manifest and compiled asset.
+
+## Phase 25 — Bullet lists in content-item descriptions (2026-11-01)
+
+### 25.1 User need and investigation
+
+The user could enter only plain text in a content item's Description field, so
+there was no straightforward way to author a multi-point list. The existing
+`HtmlSanitizer` already allowed the structural HTML tags needed for lists
+(`ul`, `ol`, and `li`), but most item-based section templates escaped the body
+as plain text. `rich_text` already sanitized item HTML; `text_block` and
+`feature_split` had also been changed to use the sanitizer before this work was
+resumed.
+
+The chosen editing workflow keeps the existing textarea and requires no
+JavaScript, rich-text dependency, schema change, or migration: an editor types
+`- ` or `* ` at the start of each bullet line. This is intentionally a small,
+plain-text convention that works in both the standalone item editor and the
+inline item editor on the page-edit screen.
+
+### 25.2 Implementation and behavior
+
+- Added `HtmlSanitizer::sanitizeItemBody()` as the common rendering entry point
+  for item descriptions. It leaves empty descriptions empty, recognizes
+  existing HTML when no plain-text list marker is present and sends that HTML
+  through the existing allowlist sanitizer, and formats ordinary text into
+  paragraphs and list markup before sanitizing it.
+- Plain-text lines starting with `- ` or `* ` become an unordered list.
+  Consecutive bullet lines share one list; a blank line closes a paragraph or
+  list; ordinary lines are grouped into paragraphs and retain line breaks.
+- Plain-text paragraph and list content is HTML-escaped before it is sent to
+  the sanitizer. Thus text that resembles a script remains visible as harmless
+  text; it cannot become executable markup. Existing HTML still follows the
+  sanitizer's tag, attribute, link, image, and embed allowlists.
+- Updated the shared item editor's placeholder and hint with the bullet syntax,
+  so the instruction appears in both Add/Edit item forms and the inline editor
+  on the page-edit screen.
+- Routed item descriptions through the helper in the applicable body-rendering
+  templates: `text_block`, `feature_split`, `card_grid`, `news_list`,
+  `rich_text`, and `download_list`. In particular, card and news descriptions
+  now use containers that can validly contain a paragraph or list instead of
+  wrapping rich body markup in a paragraph or span.
+- Added site CSS for list indentation, item spacing, paragraph spacing, and
+  download-description lists to keep the new markup readable in each layout.
+- No migration or database-shape change was needed: the existing item `body`
+  field stores the same text as before.
+
+### 25.3 Regression coverage and verification
+
+- Added sanitizer unit tests for plain-text paragraphs/lists, safe escaping of
+  markup-like list text, and continued sanitization of existing HTML.
+- Added a public-page feature test covering all six body-rendering templates
+  (`text_block`, `feature_split`, `card_grid`, `news_list`, `rich_text`, and
+  `download_list`) and asserting each renders the safe list markup.
+- `php artisan test tests/Unit/HtmlSanitizerTest.php`: **5 passed, 21
+  assertions**.
+- `php artisan test tests/Feature/CmsContentTest.php`: **10 passed, 99
+  assertions**.
+- `vendor/bin/pint --test app/Support/HtmlSanitizer.php
+  tests/Unit/HtmlSanitizerTest.php`: passed.
+- `git diff --check`: passed.
+
+### 25.4 Deployment status and standing documentation instruction
+
+This work was implemented and verified in the local worktree only. It was not
+deployed to staging or production, and no content was changed on either
+environment.
+
+The user explicitly requested that future project work also be recorded in
+detail so a later AI/session can understand what happened. **For future
+code-changing work, update `docs/CHANGELOG.md` in the same task** with the
+reason for the change, investigation and relevant prior behavior, implementation
+details and affected files/surfaces, verification and results, and deployment
+status. Do not claim a deployment or verification that was not actually done.
+
+## Phase 26 — Blank lines between description bullets (2026-11-01)
+
+### 26.1 Follow-up report and root cause
+
+The user reported that a six-item septic-services list was still not visible in
+a service card. Their pasted Description has an empty line between each
+hyphen-prefixed bullet. The first implementation treated every empty line as
+the end of a list, which generated a separate one-item `<ul>` for each bullet
+instead of one contiguous list. This was inconsistent with the user's
+paragraph-style input and made the intended card list harder to recognize.
+
+There was also a deployment/content mismatch to call out: the preceding phase
+explicitly recorded that the implementation had not been deployed. A read-only
+fetch of `https://rohes.plansaver.ca/services` confirmed that the staging page
+still has the previously published service descriptions; the septic description
+from the user's message is not present there. Therefore a local code fix alone
+cannot change what that staging URL displays.
+
+### 26.2 Parser, card styling, and editor hint
+
+- Updated `HtmlSanitizer::sanitizeItemBody()` so blank lines within a run of
+  bullet lines no longer flush the list. The next ordinary text line closes the
+  list, so surrounding paragraphs remain separate and consecutive bullets
+  render as one `<ul>` even when separated by blank lines.
+- Explicitly set `list-style: disc` and spacing for lists in card and news
+  descriptions instead of relying on browser defaults. This makes the list
+  marker deliberate in the service-card layout.
+- Updated the shared Description hint to say blank lines between bullets are
+  fine, while other blank lines separate paragraphs.
+- Expanded the CMS public-page feature test to use the user's supplied septic
+  description structure (intro, six hyphen bullets each separated by a blank
+  line, and closing paragraph) and assert that all six applicable content
+  templates render the six bullets in one list.
+- Added a sanitizer unit test confirming blank-line-separated bullets remain
+  in one list and surrounding paragraphs are preserved.
+
+### 26.3 Verification and deployment status
+
+- `php artisan test tests/Unit/HtmlSanitizerTest.php
+  tests/Feature/CmsContentTest.php`: **16 passed, 123 assertions**.
+- `vendor/bin/pint --test app/Support/HtmlSanitizer.php
+  tests/Unit/HtmlSanitizerTest.php tests/Feature/CmsContentTest.php`: passed.
+- `git diff --check`: passed.
+- No files were deployed and no remote content was edited. Staging continues
+  to display its old service descriptions; deploy the local changes and save
+  the supplied septic description in the target service item before expecting
+  it to appear there.
+
+## Phase 27 — Confirming why the live card still has no bullets (2026-11-01)
+
+### 27.1 Live-site verification
+
+After the user reported that the bullets were still not working, the staging
+site was checked directly rather than assuming a passing local test meant the
+live site was fixed.
+
+- `https://rohes.plansaver.ca/services` still returns the older service-card
+  descriptions; it does not contain the user's septic-service introduction,
+  six bullet items, or closing paragraph.
+- The staging Vite manifest still references `assets/app-1N1zvM2-.css`, which
+  predates the local bullet-list styling. This confirms the public site is not
+  serving the current local asset build.
+- A request to `https://rohes.ca/services` could not be retrieved by the
+  available web fetcher because of a transport-level DNS/connection/TLS error;
+  no conclusion about that host's current content is recorded here.
+
+The relevant distinction is that local implementation and tests do not update
+the server. The site's public page must receive the code/templates and compiled
+asset, and the septic description must be saved in the service item on that
+environment. The staging HTML currently confirms neither the new description
+nor the new deployed CSS.
+
+### 27.2 Local production asset build
+
+- Ran `npm run build`: succeeded. The generated stylesheet is
+  `public/build/assets/app-BFOwSZnt.css`; the JavaScript remains
+  `public/build/assets/app-DNRFt0LY.js`.
+- Confirmed `public/build/manifest.json` points to
+  `assets/app-BFOwSZnt.css` and that the compiled stylesheet contains the
+  `.card__text ul` rule with explicit `list-style: disc`.
+- Vite emitted its existing non-fatal notices that the four `/fonts/inter-*.woff2`
+  references are resolved at runtime. The build completed successfully.
+- `php artisan test tests/Unit/HtmlSanitizerTest.php
+  tests/Feature/CmsContentTest.php`: **16 passed, 123 assertions**.
+- Pint passed for the changed PHP implementation and tests after formatting
+  the touched feature-test file. `git diff --check` passed.
+
+### 27.3 Initial deployment status
+
+At the time of the first live verification, no files had been deployed. The
+user then explicitly asked to upload the changes. The deployment and its
+follow-up permission correction are recorded below.
+
+### 27.4 Staging deployment and permission correction
+
+Deployed to staging only:
+`/home/weddi133/rohes.ca` on `ftp.weddingsbychristian.com:2222`.
+The package was **19,124 bytes**, contained exactly the eight changed runtime
+PHP/Blade files, `resources/css/site.css`, `public/build/manifest.json`, and
+`public/build/assets/app-BFOwSZnt.css`, and had SHA-256
+`51d307bad03df85c16dadc4beaba6d6d6c5d24ea9803dff479d0e736b3b4d9b4`.
+Tests and the changelog were not uploaded to the runtime server.
+
+SCP reset its SSH connection. Following the established shared-host procedure,
+the archive was streamed over one key-authenticated SSH connection, which then
+created the backup, verified the archive checksum and exact member list,
+extracted the package, and cleared compiled Blade views. The protected backup
+is `/home/weddi133/backups/rohes-pre-bullets-20261101-190232`; its directory
+mode is `700`, the code/media archive and SQLite copy are `600`, and `.env` is
+`640`. `public/media/uploads` was not part of the deploy package and was not
+modified. No seeder, migration, Composer command, or database write ran.
+
+The first live asset check caught a deployment packaging issue: Windows tar
+recorded the new manifest and CSS as mode `600`, so Apache returned 403 for
+both even though the manifest pointed to the correct CSS hash. The exact
+uploaded runtime files were corrected to mode `644`. Do not repeat this
+mistake on future Windows-built tar packages: explicitly set public manifest
+and compiled assets to `644` after extraction (and keep public directories
+traversable).
+
+### 27.5 Post-deployment verification and remaining content step
+
+- Live `https://rohes.plansaver.ca/services` returns HTTP 200 and references
+  `app-BFOwSZnt.css`.
+- Live `/build/manifest.json` returns HTTP 200 and resolves the stylesheet to
+  `assets/app-BFOwSZnt.css`.
+- The new compiled CSS returns HTTP 200 (`text/css`, 38,549 bytes) and contains
+  the `.card__text ul` rule with explicit `list-style:disc`.
+- Executed the deployed `HtmlSanitizer::sanitizeItemBody()` on the remote PHP
+  runtime with blank-line-separated bullets; it returned a single `<ul>` with
+  both expected `<li>` elements.
+- The public Services page still shows the existing service descriptions and
+  **does not contain** “Septic tank pumping and cleaning” or the supplied
+  septic description. No database content was altered during deployment.
+  The code and CSS are now live; the requested text still needs to be saved in
+  the appropriate Services content item in the staging CMS before those
+  bullets can appear on the public page.
+- `php artisan test tests/Unit/HtmlSanitizerTest.php
+  tests/Feature/CmsContentTest.php`: **16 passed, 123 assertions**;
+  `npm run build`, Pint, and `git diff --check` passed.
+- The remote deployment archive and the local temporary package were removed.
+  The protected server backup remains in place.
+
+## Phase 28 — Full-width section short introductions (2026-11-01)
+
+### 28.1 User report and root cause
+
+The user reported that the `Septic Services` section's introductory description
+was bunched up rather than spanning the page. A fresh request to the shared
+staging browser URL confirmed the page being inspected still contains the
+previously saved Services content; neither the heading `Septic Services` nor
+the quoted introductory copy was present in the staging HTML at the time of
+inspection. The browser and direct HTTPS response both identify the section
+heading markup as the shared `.section__head` component.
+
+The layout cause was in `resources/css/site.css`:
+`.section__head { max-width: 46rem; ... }` constrained all section headings and
+their short introductions to about 736 px, even when the site content wrapper
+was wider. This affected the section intro, not the card's text column.
+
+### 28.2 Layout change
+
+- Removed the fixed `46rem` max-width from `.section__head`. Its heading and
+  short introduction now use the available width inside the existing `.wrap`
+  (which remains capped at the site's 1140 px content width and retains its
+  responsive side padding).
+- Kept the existing bottom spacing and `section__head--center` text-alignment
+  behavior. This is a shared rule, so it applies consistently to section
+  intros across card grids, split features, downloads, news, statistics,
+  checklist, and other sections using the common heading partial.
+- No content, card-grid columns, database data, or model behavior changed.
+
+### 28.3 Build verification before deployment
+
+- `npm run build`: passed. New stylesheet:
+  `public/build/assets/app-DkESJiby.css`; JavaScript remains
+  `public/build/assets/app-DNRFt0LY.js`.
+- Vite emitted the same non-fatal notices that the four self-hosted Inter font
+  references are resolved at runtime. The production build completed.
+- At this point in the work, the CSS update had not yet been deployed; the
+  subsequent staging deployment and live verification are documented in 28.4.
+
+### 28.4 Staging deployment and browser verification
+
+The user explicitly requested that changes be uploaded. Deployed the static
+asset update to staging `/home/weddi133/rohes.ca` in a two-file package
+(`public/build/manifest.json` and `public/build/assets/app-DkESJiby.css`).
+Before extraction, made protected backup
+`/home/weddi133/backups/rohes-pre-section-intro-20261101-191709` with code/media,
+SQLite, and `.env`; directory permissions are `700`, archive/database `600`,
+and `.env` `640`. Package SHA-256:
+`1410bcf53c37ea591dace54e32eb4e03e73a3e9e71c90b1c03f1bb47bd25dfb8`.
+The manifest and stylesheet were explicitly set to mode `644`. No application
+content, database, or user media was changed.
+
+Live verification:
+
+- The cache-busted public manifest returns HTTP 200 and points to
+  `assets/app-DkESJiby.css`.
+- The new stylesheet returns HTTP 200 (`text/css`, 38,533 bytes) and contains
+  `.section__head { margin-bottom: 2rem; }`, with no `max-width` constraint.
+- Reloaded the live `/services` page in the browser and measured the rendered
+  existing “Our services” header: viewport width 1,631 px; `.section__head`
+  and its intro are 1,140 px wide (the full content area inside the 1,180 px
+  padded wrapper); computed `max-width` is `none`.
+- The `Septic Services` title and exact intro text were not in the live staging
+  page at this verification, so this test confirms the layout fix on the
+  rendered section and the rule will apply when that text is saved there.

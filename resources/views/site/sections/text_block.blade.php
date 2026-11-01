@@ -9,7 +9,7 @@
                  title, intro and any paragraphs entered as items. --}}
             @foreach ($section->items as $item)
                 @if ($item->title)<h3>{{ $item->title }}</h3>@endif
-                @if ($item->body)<p>{!! nl2br(e($item->body)) !!}</p>@endif
+                @if ($item->body){!! \App\Support\HtmlSanitizer::sanitizeItemBody($item->body) !!}@endif
             @endforeach
         </div>
     </div>

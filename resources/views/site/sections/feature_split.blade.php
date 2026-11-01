@@ -21,7 +21,7 @@
                 <div>
                     @if ($item->subtitle)<span class="eyebrow">{{ $item->subtitle }}</span>@endif
                     <h3>{{ $item->title }}</h3>
-                    <div class="prose">{!! nl2br(e($item->body)) !!}</div>
+                    <div class="prose">{!! \App\Support\HtmlSanitizer::sanitizeItemBody($item->body) !!}</div>
                     @if ($item->link_url)
                         <div class="btn-row" style="margin-top:1.25rem">
                             <a href="{{ link_to($item->link_url) }}" class="btn btn--green btn--sm">

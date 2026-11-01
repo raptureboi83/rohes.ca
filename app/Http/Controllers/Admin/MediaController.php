@@ -116,6 +116,16 @@ class MediaController extends Controller
 
             Storage::disk('media')->putFileAs(self::UPLOAD_FOLDER, $upload, $filename);
 
+            // Optimize images for web: resize to max 1600px width, convert to WebP.
+            // This keeps hero backgrounds and card images fast on desktop and mobile.
+            if (str_starts_with(self::ALLOWED[$extension], 'image/')) {
+                $optimized = $this->optimizeImage($path, $extension);
+                if ($optimized !== null) {
+                    $path = $optimized[0];
+                    $extension = $optimized[1];
+                }
+            }
+
             $stored++;
 
             [$mime, $width, $height] = $this->inspectStoredFile($path, $extension);
@@ -123,7 +133,7 @@ class MediaController extends Controller
             Media::create([
                 'disk' => 'media',
                 'folder' => self::UPLOAD_FOLDER,
-                'filename' => $filename,
+                'filename' => basename($path),
                 'original_name' => $this->clean($upload->getClientOriginalName()),
                 'mime_type' => $mime,
                 'size' => Storage::disk('media')->size($path) ?: 0,
@@ -265,6 +275,83 @@ class MediaController extends Controller
         }
 
         return [self::ALLOWED[$fallbackExtension], null, null];
+    }
+
+    /**
+     * Optimize an uploaded image for web delivery.
+     *
+     * Resizes to a maximum width of 1600px (preserving aspect ratio) and
+     * converts to WebP at quality 82. This keeps hero backgrounds and card
+     * images fast on both desktop and mobile. Transparency is preserved for
+     * PNG and WebP sources.
+     *
+     * @return array{0: string, 1: string}|null [stored path relative to media root, new extension]
+     */
+    protected function optimizeImage(string $relativePath, string $originalExtension): ?array
+    {
+        $disk = Storage::disk('media');
+        $fullPath = $disk->path($relativePath);
+
+        if (! is_file($fullPath) || ! function_exists('exif_imagetype')) {
+            return null;
+        }
+
+        $type = exif_imagetype($fullPath);
+
+        $createFunc = match ($type) {
+            IMAGETYPE_JPEG => 'imagecreatefromjpeg',
+            IMAGETYPE_PNG => 'imagecreatefrompng',
+            IMAGETYPE_GIF => 'imagecreatefromgif',
+            IMAGETYPE_WEBP => 'imagecreatefromwebp',
+            default => null,
+        };
+
+        if (! $createFunc) {
+            return null;
+        }
+
+        $source = $createFunc($fullPath);
+        if (! $source) {
+            return null;
+        }
+
+        $sourceWidth = imagesx($source);
+        $sourceHeight = imagesy($source);
+
+        $maxWidth = 1600;
+
+        if ($sourceWidth > $maxWidth) {
+            $ratio = $maxWidth / $sourceWidth;
+            $newWidth = $maxWidth;
+            $newHeight = max(1, (int) round($sourceHeight * $ratio));
+        } else {
+            $newWidth = $sourceWidth;
+            $newHeight = $sourceHeight;
+        }
+
+        $canvas = imagecreatetruecolor($newWidth, $newHeight);
+
+        if ($type === IMAGETYPE_PNG || $type === IMAGETYPE_WEBP) {
+            imagealphablending($canvas, false);
+            imagesavealpha($canvas, true);
+            $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+            imagefill($canvas, 0, 0, $transparent);
+        }
+
+        imagecopyresampled($canvas, $source, 0, 0, 0, 0, $newWidth, $newHeight, $sourceWidth, $sourceHeight);
+
+        $webpFilename = preg_replace('/\.(jpg|jpeg|png|gif)$/i', '.webp', basename($relativePath));
+        $webpPath = self::UPLOAD_FOLDER.'/'.$webpFilename;
+
+        imagewebp($canvas, $disk->path($webpPath), 82);
+
+        imagedestroy($source);
+        imagedestroy($canvas);
+
+        // Remove the original unoptimized file.
+        $disk->delete($relativePath);
+
+        return [$webpPath, 'webp'];
     }
 
     /** Strip markup and collapse whitespace before storing any user text. */

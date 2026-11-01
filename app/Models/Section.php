@@ -77,7 +77,7 @@ class Section extends Model
     /** @var array<string, array<string, array<string, mixed>>> */
     public const TEMPLATE_SETTINGS = [
         'hero' => [
-            'background_image' => ['label' => 'Hero background image', 'type' => 'image', 'hint' => 'Optional. Choose a photo for the background.'],
+            'background_image' => ['label' => 'Hero background image', 'type' => 'image', 'hint' => 'Optional. Upload a photo (e.g. a truck) — it will be optimized for web and mobile. Use the visibility slider below to make it subtle so text stays readable.'],
             'background_opacity' => [
                 'label' => 'Background image visibility',
                 'type' => 'range',

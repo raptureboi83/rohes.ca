@@ -29,7 +29,7 @@ p:last-child { margin-bottom: 0; }
   color: var(--earth-600); margin: 0 0 .7rem;
 }
 .lede { font-size: 1.12rem; color: var(--ink-soft); }
-.prose { max-width: var(--wrap-narrow); }
+.prose { max-width: var(--wrap); }
 .prose a { color: var(--green-700); text-underline-offset: 3px; }
 .prose ul { padding-left: 1.2rem; color: var(--ink-soft); }
 .prose li { margin-bottom: .45rem; }

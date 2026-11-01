@@ -46,8 +46,12 @@ if (! function_exists('setting_url')) {
             return $default;
         }
 
-        if (Str::startsWith($value, ['http://', 'https://', 'mailto:', 'tel:', '#', '/'])) {
+        if (Str::startsWith($value, ['https://', 'mailto:', 'tel:', '#', '/'])) {
             return $value;
+        }
+
+        if (Str::startsWith($value, 'http://')) {
+            return 'https://'.substr($value, strlen('http://'));
         }
 
         return 'https://'.$value;

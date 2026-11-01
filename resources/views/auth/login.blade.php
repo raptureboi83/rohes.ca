@@ -12,7 +12,7 @@
     <div class="field @error('email') field--error @enderror">
         <label for="email">Email address</label>
         <input class="input" type="email" id="email" name="email" value="{{ old('email') }}"
-               required autofocus autocomplete="username" autofocus>
+               required autofocus autocomplete="username">
         @error('email')<p class="error-text">{{ $message }}</p>@enderror
     </div>
 
@@ -29,10 +29,10 @@
     </div>
 
     <div class="auth-actions">
+        <button type="submit" class="btn btn--primary">Sign in</button>
         @if (Route::has('password.request'))
             <span class="auth-link"><a href="{{ route('password.request') }}">Forgotten your password?</a></span>
         @endif
-        <button type="submit" class="btn btn--primary">Sign in</button>
     </div>
 </form>
 @endsection

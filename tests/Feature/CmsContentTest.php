@@ -134,16 +134,18 @@ class CmsContentTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.pages.index'))
             ->assertOk()
-            ->assertSee('Edit content')
+            ->assertSee('Edit page')
             ->assertSee(route('admin.pages.edit', $page), false);
 
         $this->actingAs($admin)
             ->get(route('admin.pages.edit', $page))
             ->assertOk()
-            ->assertSee('Edit News')
-            ->assertSee('Edit section text and layout')
-            ->assertSee('Edit item:')
+            ->assertSee('Change News')
+            ->assertSee("Change this part's text and layout", false)
+            ->assertSee('Add another entry')
             ->assertSee('Example news item')
+            ->assertSee('admin-image-preview', false)
+            ->assertSee('admin-image-inline-preview', false)
             ->assertSee('Date or date label')
             ->assertSee('Editor photo.jpg');
 
@@ -295,6 +297,37 @@ class CmsContentTest extends TestCase
             ->assertSessionHasErrors('settings.social.facebook');
     }
 
+    public function test_header_shows_brand_text_when_no_logo_is_set(): void
+    {
+        Page::create([
+            'title' => 'Home',
+            'slug' => 'home',
+            'is_home' => true,
+            'is_active' => true,
+        ]);
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<span class="brand__text">', $html);
+        $this->assertStringNotContainsString('class="brand__logo"', $html);
+    }
+
+    public function test_header_hides_brand_text_until_the_logo_fails_to_load(): void
+    {
+        Page::create([
+            'title' => 'Home',
+            'slug' => 'home',
+            'is_home' => true,
+            'is_active' => true,
+        ]);
+        Setting::create(['key' => 'site.logo_path', 'value' => '/media/legacy/logo.jpeg']);
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="brand__logo" x-show="! logoFailed" @error="logoFailed = true"', $html);
+        $this->assertStringContainsString('class="brand__text" x-show="logoFailed" x-cloak', $html);
+    }
+
     public function test_home_hero_background_can_be_selected_in_the_cms(): void
     {
         $page = Page::create([
@@ -324,7 +357,19 @@ class CmsContentTest extends TestCase
             ->get(route('admin.pages.edit', $page))
             ->assertOk()
             ->assertSee('Hero background image')
+            ->assertSee('Background image visibility')
+            ->assertSee('15%')
             ->assertSee('Field photo.jpg');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertDontSee('hero__background')
+            ->assertDontSee('--hero-image-opacity');
+
+        $section->update(['settings' => ['background_image' => '/media/uploads/hero-field.jpg']]);
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('--hero-image-opacity: 0.15');
 
         $this->actingAs($admin)
             ->put(route('admin.sections.update', $section), [
@@ -337,14 +382,40 @@ class CmsContentTest extends TestCase
                 'intro' => 'Responsible biosolids management.',
                 'sort_order' => 0,
                 'is_visible' => 1,
-                'settings' => ['background_image' => '/media/uploads/hero-field.jpg'],
+                'settings' => [
+                    'background_image' => '/media/uploads/hero-field.jpg',
+                    'background_opacity' => 65,
+                ],
             ])
             ->assertRedirect(route('admin.pages.edit', $page));
 
         $this->assertSame('/media/uploads/hero-field.jpg', $section->fresh()->setting('background_image'));
+        $this->assertSame('65', $section->fresh()->setting('background_opacity'));
         $this->get('/')
             ->assertOk()
             ->assertSee('hero--with-image')
-            ->assertSee('/media/uploads/hero-field.jpg');
+            ->assertSee('/media/uploads/hero-field.jpg')
+            ->assertSee('--hero-image-opacity: 0.65');
+
+        $this->actingAs($admin)
+            ->from(route('admin.pages.edit', $page))
+            ->put(route('admin.sections.update', $section), [
+                'return_to_page' => 1,
+                'title' => 'Welcome',
+                'slug' => 'hero',
+                'template_key' => 'hero',
+                'anchor_id' => '',
+                'eyebrow' => 'Serving Ontario',
+                'intro' => 'Responsible biosolids management.',
+                'sort_order' => 0,
+                'is_visible' => 1,
+                'settings' => [
+                    'background_image' => '/media/uploads/hero-field.jpg',
+                    'background_opacity' => 101,
+                ],
+            ])
+            ->assertSessionHasErrors('settings.background_opacity');
+
+        $this->assertSame('65', $section->fresh()->setting('background_opacity'));
     }
 }

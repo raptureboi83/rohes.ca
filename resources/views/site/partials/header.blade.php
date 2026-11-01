@@ -1,13 +1,20 @@
 <header class="site-header">
     <div class="wrap site-header__inner">
-        <a href="{{ route('home') }}" class="brand">
-            @if (setting('site.logo_path'))
-                <img src="{{ setting('site.logo_path') }}" alt="{{ setting('site.name', 'Region of Huronia Environmental Services') }}" class="brand__logo">
+        @php $logoPath = trim((string) setting('site.logo_path', '')); @endphp
+        <a href="{{ route('home') }}" class="brand" @if ($logoPath) x-data="{ logoFailed: false }" @endif>
+            @if ($logoPath)
+                <img src="{{ media_src($logoPath) }}" alt="{{ setting('site.name', 'Region of Huronia Environmental Services') }}"
+                     class="brand__logo" x-show="! logoFailed" @@error="logoFailed = true">
+                <span class="brand__text" x-show="logoFailed" x-cloak>
+                    <span class="brand__name">{{ setting('site.short_name', 'ROHES') }}</span>
+                    <span class="brand__tag">{{ setting('site.tagline', 'Environmental Services') }}</span>
+                </span>
+            @else
+                <span class="brand__text">
+                    <span class="brand__name">{{ setting('site.short_name', 'ROHES') }}</span>
+                    <span class="brand__tag">{{ setting('site.tagline', 'Environmental Services') }}</span>
+                </span>
             @endif
-            <span class="brand__text">
-                <span class="brand__name">{{ setting('site.short_name', 'ROHES') }}</span>
-                <span class="brand__tag">{{ setting('site.tagline', 'Environmental Services') }}</span>
-            </span>
         </a>
 
         <nav class="nav" id="siteNav" aria-label="Main">

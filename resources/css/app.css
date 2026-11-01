@@ -48,7 +48,32 @@
   --wrap: 1140px;
   --wrap-narrow: 720px;
 
-  --font: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  /* Inter, self-hosted from public/fonts. Segoe UI is the Windows system face
+     and read as dated on the sign-in screen; loading from Google's CDN would
+     leak every visitor IP to a third party, so the woff2 files are served from
+     this origin. `swap` keeps text readable while the file loads, and
+     font-display is left at the default so a slow connection never blanks it. */
+  --font: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Only the latin subset is shipped (see public/fonts). `swap` shows the fallback
+   immediately and swaps in Inter once it arrives, so a slow or failed font
+   request degrades to the system stack instead of invisible text. */
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/fonts/inter-regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: swap;
+  src: url('/fonts/inter-medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap;
+  src: url('/fonts/inter-semibold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url('/fonts/inter-bold.woff2') format('woff2');
 }
 
 html { scroll-behavior: smooth; scroll-padding-top: 6rem; }

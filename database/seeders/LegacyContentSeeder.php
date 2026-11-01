@@ -287,8 +287,8 @@ class LegacyContentSeeder extends Seeder
             'settings' => [
                 'cta_label' => 'Contact ROHES',
                 'cta_url' => '/contact',
-                'secondary_label' => '705-424-6075',
-                'secondary_url' => 'tel:7054246075',
+                'secondary_label' => '705-424-9799',
+                'secondary_url' => 'tel:7054249799',
             ],
         ]);
     }

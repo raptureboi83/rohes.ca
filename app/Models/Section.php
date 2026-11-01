@@ -77,7 +77,16 @@ class Section extends Model
     /** @var array<string, array<string, array<string, mixed>>> */
     public const TEMPLATE_SETTINGS = [
         'hero' => [
-            'background_image' => ['label' => 'Hero background image', 'type' => 'image', 'hint' => 'Optional. The site adds a dark overlay so white text stays readable.'],
+            'background_image' => ['label' => 'Hero background image', 'type' => 'image', 'hint' => 'Optional. Choose a photo for the background.'],
+            'background_opacity' => [
+                'label' => 'Background image visibility',
+                'type' => 'range',
+                'min' => 0,
+                'max' => 100,
+                'step' => 1,
+                'default' => 15,
+                'hint' => '15% is very faint. Increase it to show more of the photo. Only applies when a background image is selected.',
+            ],
             'cta_label' => ['label' => 'Primary button text', 'type' => 'text'],
             'cta_url' => ['label' => 'Primary button link', 'type' => 'text', 'hint' => 'Use a page path or a full external address.'],
             'secondary_label' => ['label' => 'Secondary button text', 'type' => 'text'],

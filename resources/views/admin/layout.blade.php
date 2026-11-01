@@ -27,24 +27,26 @@
             <span class="admin-nav__label">Overview</span>
             <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}">Dashboard</a>
 
-            <span class="admin-nav__label">Content</span>
-            <a href="{{ route('admin.pages.index') }}" class="{{ request()->routeIs('admin.pages.*') && ! request()->routeIs('admin.pages.sections.*') ? 'is-active' : '' }}">Pages</a>
-            <a href="{{ route('home') }}" target="_blank" rel="noopener">View website &nearr;</a>
+            <span class="admin-nav__label">Your website</span>
+            <a href="{{ route('admin.pages.index') }}" class="{{ request()->routeIs('admin.pages.*') && ! request()->routeIs('admin.pages.sections.*') ? 'is-active' : '' }}">Website pages</a>
 
-            <span class="admin-nav__label">Settings &amp; data</span>
-            <a href="{{ route('admin.media.index') }}" class="{{ request()->routeIs('admin.media.*') ? 'is-active' : '' }}">Media library</a>
-            <a href="{{ route('admin.settings.index') }}" class="{{ request()->routeIs('admin.settings.*') ? 'is-active' : '' }}">Site settings</a>
+            <span class="admin-nav__label">Other updates</span>
+            <a href="{{ route('admin.media.index') }}" class="{{ request()->routeIs('admin.media.*') ? 'is-active' : '' }}">Photos and files</a>
+            <a href="{{ route('admin.settings.index') }}" class="{{ request()->routeIs('admin.settings.*') ? 'is-active' : '' }}">Business details</a>
             <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">User accounts</a>
             <a href="{{ route('admin.messages.index') }}" class="{{ request()->routeIs('admin.messages.*') ? 'is-active' : '' }}">
-                Messages
+                Enquiries
                 @if (($unreadBadge ?? 0) > 0)<span class="badge">{{ $unreadBadge }}</span>@endif
             </a>
         </nav>
 
+        <div class="admin-side__preview">
+            <a href="{{ route('home') }}" target="_blank" rel="noopener">Preview website &nearr;</a>
+        </div>
+
         <div class="admin-side__foot">
-            Signed in as<br>
-            <b style="color:#fff">{{ auth()->user()->name }}</b>
-            <div style="margin-top:.6rem;display:flex;gap:.75rem;flex-wrap:wrap">
+            <p class="admin-side__identity">Signed in as <b>{{ auth()->user()->name }}</b></p>
+            <div class="admin-side__account">
                 <a href="{{ route('profile.edit') }}">Your account</a>
                 <form method="POST" action="{{ route('logout') }}" class="inline-form">
                     @csrf

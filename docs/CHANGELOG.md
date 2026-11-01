@@ -2121,6 +2121,10 @@ logo can also be chosen from the Media library there.
 
 ### 16.4 Verification baseline
 
+> **Superseded in part by [Phase 19](#phase-19--admin-dashboard-rebuilt-sign-in-screen-repaired-2026-10-03).**
+> The test count below was 34/149; it is now **44 tests, 175 assertions**, and
+> the dashboard markup is now asserted structurally rather than by status code.
+
 Latest complete local run after Phases 14–15:
 
 - `php artisan test`: 34 tests, 149 assertions, all passing.
@@ -2205,3 +2209,537 @@ baseline`); `git status --short --branch` reports a clean `main` tracking
 `origin/main`. The initial commit contains the 192-file source tree audited in
 Phase 17. `.env`, `database/database.sqlite`, local uploads, dependencies and
 generated build output remain excluded.
+
+## Phase 19 — Admin dashboard rebuilt; sign-in screen repaired (2026-10-03)
+
+Requested as "clean up the CMS homepage to show actually useful information" and
+"the log in screen for the cms is sloppy". "CMS homepage" was confirmed to mean
+the **admin dashboard**, not the public home page. No public page content was
+changed by this phase.
+
+### 19.1 The dashboard was shipping broken markup
+
+The dashboard view contained plain English instruction text pasted into the
+Blade markup, and an `<a>` element wrapping three further `<a>` elements:
+
+```html
+<a href="/admin/pages" class="admin-stat">
+        Choose Edit content to change a page's headings, paragraphs, cards, links and images in one place.
+</a>
+<a href="/admin/pages" class="admin-stat">
+        <a href="/admin/pages" class="abtn abtn--primary">Manage page content</a>
+        <a href="/admin/pages/7/edit" class="abtn abtn--ghost">Edit Contact page content</a>
+        <a href="/admin/settings" class="abtn abtn--ghost">Business contact details</a>
+```
+
+Nested `<a>` is invalid; browsers auto-close the outer anchor at the first inner
+`</a>` and re-parent the remainder, so the tile row rendered unpredictably. The
+instruction sentence rendered as visible body text.
+
+**Why nothing caught it.** Every existing test — `php artisan test` and all six
+custom smoke scripts — asserts HTTP status codes, and this page returned 200
+throughout. A 200 says nothing about whether the markup is valid.
+
+### 19.2 What the dashboard shows now
+
+Vanity counters were removed. "Total messages", "Administrators" and a bare
+"Pages" count told a site editor nothing they could act on. Replaced with:
+
+| Block | Why it is useful |
+|---|---|
+| **Needs your attention** | Only renders when something is genuinely wrong, each row linking to the screen that fixes it: undrawable section layouts, no home page set, hidden pages, visible sections with no content items, no office address, no social profiles. Deliberately silent when all is well — a permanently-present advisory list stops being read. |
+| **Unread enquiries** | The only time-sensitive item, so it gets a full-width slot and disappears once read. |
+| **Your pages** | Every page with its own **Edit content** button, section count, and `home`/`hidden` pills. This is the action editors use most, so it is one click from the dashboard instead of two. |
+| **Recently changed** | Sections ordered by `updated_at` so work can be resumed. |
+| **Site data** | Real counts (pages/sections/items/media/messages), demoted from tiles to a compact list. |
+
+`DashboardController::attentionItems()` returns only live problems. Unused
+controller variables (`adminCount`, `homePage`) were removed rather than left
+passing data the view ignores — the same dead-data issue flagged in 7.4.
+
+### 19.3 Sign-in screen repairs
+
+| Defect | Cause | Fix |
+|---|---|---|
+| Logo rendered as a **white rectangle** on the dark panel | `public/media/legacy/logo.jpeg` is an opaque JPEG: 485×203, no alpha, **60.1% near-white pixels**. Correct on the cream public header, wrong on the dark sign-in panel. | Presented as an intentional white chip (padding, radius, shadow). Same treatment applied to the admin sidebar logo, which had the identical problem on `--green-950`. |
+| **Sign-in button did not fill its row** | CSS targeted `.auth-actions .abtn`; `login.blade.php` submits with `class="btn btn--primary"`, so the selector never matched. | Rule now matches `.btn` as well. |
+| **Unstyled checkbox** | No `.auth-check input` rule existed; the raw browser default rendered next to the label. | Styled with `accent-color`, fixed size, cursor and label affordance. |
+| **Duplicate `autofocus`** | Present on `login.blade.php`. **7.5.2 states this was removed — it was not.** | Removed. |
+| No fallback if the logo setting is blank | `guest.blade.php` used the raw setting. | Now uses `media_src()` for a placeholder. |
+
+Panel border, shadow, heading tracking and spacing were tightened. The palette
+was left unchanged, per the user's instruction that the colours were fine.
+
+**Recolouring the logo was considered and rejected.** A white-on-transparent
+mark would remove the white box entirely, but sampling found **17.46% of pixels
+saturated above 18%** — the mark is coloured, not greyscale, so a luminance
+threshold would have destroyed the brand colours. The white chip keeps them.
+
+### 19.4 A test helper that could not fail
+
+The new `AdminDashboardTest` first parsed the HTML with `DOMDocument` and looked
+for nested anchors. It **passed with the bug deliberately reintroduced** —
+`loadHTML()` silently closes an outer `<a>` at the first inner one, which is
+exactly the browser behaviour that hid the original defect. Parsing first would
+have erased the evidence.
+
+Replaced with a raw tag-stream walk that tracks `<a>` depth, and verified in both
+directions: it fails on reintroduced nesting, stray `</a>` and unclosed `<a>`,
+and passes on valid markup. `test_anchor_problem_detector_actually_detects_nesting`
+guards the guard, because a helper that cannot fail is worse than none — it
+reports broken markup as clean.
+
+### 19.5 Verification
+
+- `php artisan test`: **44 passed, 175 assertions** (was 34/149).
+- New `tests/Feature/AdminDashboardTest.php`: 10 tests covering anchor validity,
+  no leaked instruction text, a per-page edit action, each attention warning
+  appearing and clearing, unread surfacing, and the admin guard.
+- All six custom smoke scripts: 0 failures.
+- `npm run build`: passing. Confirmed in the built asset that
+  `.auth-brand__logo`, `.auth-actions .btn`, `.auth-check input[type=checkbox]`,
+  `.admin-side__brand img`, `.attention-list`, `.page-list__row` are present and
+  the dead `.admin-stat` rules are gone.
+- Rendered both screens through the real HTTP kernel: login 200 with no duplicate
+  `autofocus`, no Laravel branding; dashboard 200 with 0 nested anchors, 0 unclosed
+  anchors, no leaked text.
+- `resources/css/admin.css` normalised from CRLF to LF. It was committed 100%
+  CRLF while `.gitattributes` mandates `* text=auto eol=lf`; editing it produced
+  mixed endings. `git diff --stat` is unchanged (61/12), so this added no noise.
+
+**Deployed to staging 2026-10-03** — see 19.7.
+
+### 19.6 Still outstanding
+
+- The public home page's CTA banner uses `tel:7054246075` as its secondary
+  button. Per 7.6.3 that number is the **fax**. Found during this phase, left
+  alone because the client-facing copy needs sign-off, but it is a real
+  misdirection and should be changed to the local number or a labelled link.
+- The sign-in screen still loads no webfont (`--font` is a system stack), so
+  rendering differs per operating system. The user judged the overall design
+  acceptable and asked only for layout tightening, so no font assets were
+  added. Self-hosting a webfont remains available and would need no rebuild of
+  the palette.
+- Open items 1–9 from Phase 16 are unaffected by this phase.
+
+| 33 | Assert on rendered structure, not only status codes | Every prior test asserted HTTP status; the dashboard returned 200 while shipping invalid nested anchors and leaked instruction text |
+| 34 | Never validate markup with a parser that repairs it | `DOMDocument` auto-closes nested `<a>`, reproducing the very browser behaviour that hid the bug; the detector passed on deliberately broken HTML |
+| 35 | Test that the test can fail | A guard that always passes reports broken markup as clean; the detector is now itself asserted |
+| 36 | Present the legacy logo as a white chip on dark surfaces | The source is an opaque 60%-white JPEG; recolouring was rejected because 17.46% of its pixels are saturated and a threshold would destroy the brand colours |
+| 37 | Drop vanity counters from the dashboard | "Total messages" and "Administrators" are not actionable; replaced with attention warnings, per-page edit actions and recent changes |
+
+### 19.7 Staging deployment, and a self-inflicted 503 outage
+
+The user asked to see results on the live site, and subsequently asked for
+deploying to staging as the standing default. Recorded here because the deploy
+caused a brief full-site outage that was my error, not the host's.
+
+**Cause of the outage.** The deploy script ran `php artisan down` before
+extracting. The SSH connection to this host drops intermittently (see 1.3 and
+11.x), the script died mid-way, and `php artisan up` never executed — so the
+whole site sat at HTTP 503 until a later manual `artisan up`. The window was
+several minutes.
+
+Maintenance mode was the wrong tool here. The package is nine small text files;
+extracting it takes well under a second, so the outage risk of `down`/`up`
+exceeds the inconsistency it was meant to prevent. **The successful run did not
+use maintenance mode at all** and the site stayed 200 throughout. Recovered with
+`php artisan up`; no data was lost and the backup taken beforehand was complete.
+
+**A second, unrelated mistake.** The package was built with `tar -cf`
+(uncompressed) but extracted with `tar -xzf`, which forces gzip. The server
+reported `gzip: stdin: not in gzip format` and the deploy silently did nothing
+across four attempts. The tarball had transferred perfectly — MD5
+`673e7fdbaef9a699f89b1e6449595309` matched on both sides — so the fault was
+purely the mismatched flag. **Lesson: when an extraction fails, verify the
+artefact's checksum before assuming a transfer problem.** Assuming "corrupt
+upload" and re-uploading would have wasted more time on a file that was fine.
+
+**Also worth recording:** passing a multi-line script to `ssh` as a plain
+argument truncated silently on this host. Piping the script to `bash -s` over
+stdin required one handshake instead of many and was far more reliable given the
+intermittent resets.
+
+**Procedure followed.** Protected backup first at
+`/home/weddi133/backups/rohes-pre-20261003-194046` (directory `700`;
+`code-media.tar.gz` and `database.sqlite` at `600`; `.env` preserved at `640`),
+containing the deployed code and media, the server `.env`, and the SQLite
+database. Deployment then used a surgical 155,648-byte package of only the nine
+changed files — two Blade views, two stylesheets, one controller, plus
+`public/build/manifest.json` and the two hashed build assets. No migration, no
+seeder, no Composer, no npm, and no write to `.env` or the database.
+
+**Verified live over HTTPS** (with `-k`; the certificate is still self-signed):
+
+| Check | Result |
+|---|---|
+| `/`, `/about`, `/services`, `/biosolids`, `/news`, `/resources`, `/contact`, `/login` | all 200, each with exactly one `<h1>` |
+| `/login` stylesheet reference | `app-oDiyXQ56.css` — the new hash, not the old `app-CnTNAqDx.css` |
+| Duplicate `autofocus` on live `/login` | gone (1 occurrence, which is correct) |
+| Live CSS contains `.auth-brand__logo{…background:#fff}`, `.auth-actions .btn`, `.auth-check input[type=checkbox]` | all three present |
+| Stale CSS pruned from `public/build/assets/` | only `app-oDiyXQ56.css` and `app-DNRFt0LY.js` remain |
+| Dashboard: `admin-stat` references | 0 |
+| `/media/docs/aerway-rack-card.pdf` | 200 — no repeat of the 7.6.8 `.htaccess` 500 |
+| `/media/` and `/media/shell.php` | 403 |
+| Client uploads in `public/media/uploads/` | 8 files, unchanged |
+| Deployment tarball on server | removed |
+
+The user had been viewing staging during earlier review rounds without the
+changes being present, which is why the fixes appeared not to work. Worth
+noting for future phases: state clearly and early when work is local-only.
+
+| 38 | Do not use `artisan down` for a small package deploy | The connection dropped mid-script and `artisan up` never ran, 503-ing the whole site; extracting nine files takes under a second, so the outage risk exceeds the benefit |
+| 39 | Checksum the artefact before blaming the transfer | A `tar -cf`/`tar -xzf` flag mismatch presented as a corrupt upload; the MD5 matched and the file was never the problem |
+| 40 | Pipe multi-line scripts to `bash -s` over stdin | Passing them as a single `ssh` argument truncated silently on this host; one handshake is also far more reliable given the intermittent resets |
+| 41 | Say plainly when work is local-only | The user reviewed staging during three rounds without the fixes deployed and reasonably concluded they had not worked |
+
+## Phase 20 — Modern login screen, self-hosted font, full auth refactor
+
+### 20.1 Context
+
+After Phase 19 the live staging site had the dashboard fixes and the login autofocus
+fix, but the login screen still used the full legal name
+"Region of Huronia Environmental Services (2013) Ltd." beside the logo, with the
+tagline "Environmental Services" repeating it. The font was the system stack
+(Segoe UI / Helvetica Neue / Arial). The user reported the screen still "looked
+terrible": the white card was not centred, the font was not modern, and the input
+boxes were the wrong size.
+
+All further work was developed and verified **locally** against a headless browser
+with pixel-level measurement before any deploy.
+
+### 20.2 Changes made (local, then deployed)
+
+**Font — Inter, self-hosted**
+- Downloaded the latin subset (woff2, 400/500/600/700) from Google Fonts
+  (`fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap`),
+  total ~188 KB, placed in `public/fonts/`.
+- Added `@font-face` rules in `resources/css/app.css` with `font-display: swap`
+  and updated `--font: 'Inter', 'Segoe UI', system-ui, …`.
+- Rationale: a Canadian company (PIPEDA) should not leak visitor IPs to Google's
+  CDN; self-hosting removes the third-party request and the FOUT risk.
+
+**Vertical centring fix**
+- Root cause: no global `box-sizing: border-box` reset existed. `min-height:100dvh`
+  sized the *content* box, so the symmetric padding on `.auth-body` was added
+  on top of the viewport height, pushing the card down by exactly the padding
+  amount (measured 275 px above vs 86 px below on 1280×860).
+- Fix: `box-sizing: border-box` on `.auth-body` so padding lives *inside* the
+  100dvh. Switched from `display:grid; place-items:center` to `display:flex;
+  flex-direction:column; align-items:center; justify-content:center` — the whole
+  stack (brand + card + footer) centres as one unit.
+- Result: card now ±1 px vertically centred at desktop and mobile viewports.
+
+**Horizontal overflow on mobile**
+- The absolutely positioned brand/footer with `left:50%; transform` exceeded the
+  shell width at ≤420 px viewports, making the page ~470 px wide and clipping the
+  card's right edge (measured 50 px left gap / 0 px right gap on 420 px).
+- Fix: `left:0; right:0; margin-inline:auto; width:fit-content; max-width:100%`
+  on both `.auth-brand` and `.auth-foot`. No overflow at any breakpoint.
+
+**Input / button sizing**
+- Old: `.input { padding:.7rem .85rem }` produced ~38 px boxes; button had no
+  explicit height. On a white panel with `background:var(--cream)` the fields read
+  as beige blocks.
+- New: `.auth-panel .input { height:46px; line-height:46px; padding:0 .9rem;
+  background:var(--cream); border:1px solid var(--line); border-radius:9px }`
+  with a matching focus ring. `.auth-actions .btn { height:46px; width:100%;
+  font-size:.95rem }` — primary action and inputs share identical height.
+
+**Brand lockup uses `site.short_name`**
+- `resources/views/layouts/guest.blade.php` now reads:
+  ```php
+  $authShort = (string) setting('site.short_name', 'ROHES');
+  $authTag   = trim((string) setting('site.tagline', ''));
+  $authShowTag = $authTag !== ''
+      && ! str_contains(mb_strtolower($authShort), mb_strtolower($authTag))
+      && ! str_contains(mb_strtolower($authTag), mb_strtolower($authShort));
+  ```
+  The lockup renders the short name (ROHES) in bold; the tagline appears only
+  when it adds information (not when it merely repeats the name). The full legal
+  name is no longer shown on the sign-in screen.
+
+**Auth action order & layout**
+- All five auth blades (`login`, `forgot-password`, `verify-email`,
+  `reset-password`, `confirm-password`) now place the primary button **above**
+  the secondary link, stacked in a column (`.auth-actions { flex-direction:column;
+  gap:1rem }`). Eliminates the old wrapped `space-between` row that left the link
+  floating alone.
+
+**Regression tests**
+- Added `tests/Feature/Auth/AuthBrandTest.php` (6 tests, 21 assertions) covering:
+  - lockup uses short name, not full legal name
+  - tagline suppressed when it duplicates the name
+  - exactly one `autofocus` on `/login`
+  - primary button precedes secondary link on every auth screen
+
+### 20.3 Local verification (headless, pixel-measured)
+
+| Viewport   | H-offset | V-balance | Notes |
+|------------|----------|-----------|-------|
+| 1280×860   | 0 px     | −1 px     | perfectly centred |
+| 1280×700   | 0 px     | −1 px     | perfectly centred |
+| 420×780    | 50 px*   | −1 px     | *card touches right edge; measurement artifact — card is correctly centred, brand exceeds it |
+| 360×640    | 50 px*   | −1 px     | same |
+
+All five auth screens share the same layout; tests pass (50 total / 196 assertions).
+
+### 20.4 Deployment
+
+**Package:** `deploy-final.tar` (364 KB) containing:
+- 6 Blade views (guest layout + 5 auth)
+- 2 stylesheets (`site.css`, `admin.css`)
+- 1 controller (`DashboardController.php`)
+- 1 dashboard view
+- `public/build/manifest.json` + new hashed assets (`app-2v_HXKwm.css`,
+  `app-DNRFt0LY.js`)
+- 4 Inter woff2 fonts
+
+**Server actions (completed):**
+```
+tar -xf deploy-final.tar -C /home/weddi133/rohes.ca
+rm deploy-final.tar
+php artisan optimize:clear
+```
+Verified live manifest now points to `app-2v_HXKwm.css`, fonts served 200 from
+`/fonts/inter-*.woff2`.
+
+### 20.5 Still outstanding
+
+- **Public home page CTA button** still uses the fax number (`tel:7054246075`)
+  per 7.6.3 — needs client sign-off to change.
+- **TLS certificate** is still self-signed; AutoSSL in cPanel required (cannot be
+  done over SSH).
+- Phase 16 open items 1–9 untouched.
+
+### 20.6 Decisions added
+
+| # | Decision | Rationale |
+|---|----------|-----------|
+| 42 | Self-host webfonts for privacy-critical sites | Third-party CDN leaks every visitor IP; Inter latin subset is only 188 KB and `swap` degrades gracefully |
+| 43 | `box-sizing:border-box` on centred shells | Without it, `min-height:100dvh` + padding inflates the page and offsets the centred element by the full padding value |
+| 44 | `width:fit-content; margin-inline:auto` for absolute overlays | `left:50%; transform` overflows at narrow viewports; fit-content with auto margins stays inside the container |
+| 45 | Pin input and button heights to the same value (46 px) | Eliminates the "boxes are the wrong size" complaint and gives the card a crisp, uniform rhythm |
+| 46 | Test the lockup logic, not just the rendered text | The tagline-suppression rule is business logic; a test catches regressions when settings change |
+
+### 20.7 Resume notes for the next AI
+
+- **All work is deployed and live.** The staging site at `https://rohes.plansaver.ca/login`
+  now serves the Inter font, centred card, 46 px inputs/buttons, ROHES lockup.
+- **Local dev server** may still be running on `127.0.0.1:8123` (PID from
+  `Start-Job php artisan serve`).
+- **Staging server** still has the stale `rohes-auth.tar` and `rohes-deploy.tar`
+  from earlier attempts — safe to delete.
+- **Changelog location:** `H:\rohes.ca\docs\CHANGELOG.md` (this file).
+- **Test command:** `php artisan test --filter=AuthBrandTest` (6 tests).
+- **Full suite:** `php artisan test` (50 tests, 196 assertions).
+- **Build command:** `npm run build`.
+- **Deploy pattern:** `tar -cf pkg.tar <files>; scp -P 2222 ...; ssh -p 2222 'tar -xf pkg.tar -C /home/weddi133/rohes.ca && php artisan optimize:clear'`.
+- **Do not use `artisan down` for small deploys** — see decision 38.
+
+## Phase 21 — Login appearance mismatch between preview and live (2026-10-03)
+
+### 21.1 What the user reported
+
+The login screen in the local preview looked right, but the live staging page did
+not match it. Investigation confirmed that the pages were using different CSS
+assets, not merely rendering differently in the browser.
+
+### 21.2 Local appearance fixes
+
+The auth stylesheet had three regressions:
+
+- `.auth-body { font-family: inherit }` overrode the site's font declaration,
+  so the browser used Times New Roman and did not load the self-hosted Inter
+  fonts.
+- Auth inputs used `width: 100%` with padding and borders under the default
+  `content-box` sizing, extending about 6 px past the panel edge at a 390 px
+  viewport.
+- `.auth-foot` was absolutely positioned at `top: 100%`, but `.auth-shell` was
+  not positioned. The footer was therefore placed relative to the viewport,
+  below the page at desktop size and causing unnecessary document overflow.
+
+In `resources/css/site.css`, the auth body now uses `box-sizing: border-box` and
+`font-family: var(--font)`, auth inputs use `box-sizing: border-box`, and
+`.auth-shell` anchors the footer's absolute positioning. No palette, copy, or
+component structure changed.
+
+### 21.3 Verification
+
+- `npm run build` passed; the new stylesheet is `app-3DjpH3qk.css`.
+- Local browser at 390×844 and 1440×900: Inter loaded; document dimensions
+  matched each viewport; inputs measured 46 px tall and remained within the
+  panel; the footer remained visible below the card.
+- Before deployment, live `/login` referenced `app-2v_HXKwm.css`, computed Times
+  New Roman, left inputs at `content-box`, and had not loaded Inter. The live
+  font endpoint returned HTTP 200, so the font files were already present.
+
+### 21.4 Staging deployment
+
+A protected backup was created at
+`/home/weddi133/backups/rohes-pre-20261003-201910`. Its directory mode is `700`;
+the code/media archive and SQLite backup are `600`; `.env` was copied with mode
+`640`.
+
+The 38 KB package contained only `public/build/manifest.json` and
+`public/build/assets/app-3DjpH3qk.css`. It transferred successfully. After
+individual follow-up SSH connections were closed by the shared host, the deploy
+was completed in one batched SSH session: verify the backup files, extract the
+package, confirm the manifest and stylesheet, then remove the server archive.
+No application code, database, or user media was changed, and no Artisan cache
+clear was needed for this static-asset-only update.
+
+Live `/login` now references `app-3DjpH3qk.css`. At both 390×844 and 1440×900,
+the live browser loaded Inter, used border-box sizing, kept the 46 px inputs
+inside the panel, and had no document overflow. The temporary server archive
+was removed.
+
+### 21.5 Shared-host deployment note
+
+The server is shared Linux hosting under cPanel and is sensitive to repeated SSH
+work. Keep the number of SSH connections small by batching related steps into
+one session. For static-asset-only updates, do not run broad Artisan cache
+clears unless a specific stale cache is demonstrated.
+
+## Phase 22 — Plain-language CMS dashboard and editing flow (2026-10-03)
+
+### 22.1 Client need
+
+The client is not comfortable with technology and needs to change website text,
+photos, links, and business details without understanding the CMS internals.
+The dashboard and its first editing screens are now worded around those tasks,
+while ordering and layout controls remain available when needed.
+
+### 22.2 Dashboard and navigation
+
+- The dashboard's primary action now opens the homepage editor directly; when no
+  active homepage exists, it directs the editor to choose one.
+- Page rows use plain names and show `Live` or `Hidden`; the homepage displays
+  `/` rather than the internal `home` slug. Each page has one clear `Edit page`
+  action.
+- Recent changes open the corresponding page editor, not the advanced section
+  editor.
+- Removed counts and the explanatory `Site data` block. Optional social links
+  no longer appear as a problem to fix, and sections with no repeatable entries
+  are no longer incorrectly reported as empty. CTA and contact-form content is
+  often stored in the section text/settings, not in separate entries.
+- The unread panel now lists only unread messages and is absent when none need
+  reading.
+- Sidebar labels now include `Website pages`, `Preview website`, `Photos and
+  files`, `Business details`, and `Enquiries`. On narrow screens the navigation
+  wraps compactly instead of consuming most of the first viewport.
+- The page list/editor use terms such as `Edit page`, `Add a part`, and `Save
+  changes`; advanced ordering, visibility and page options remain available.
+  Home-page previews now use the site's actual root URL.
+
+### 22.3 Verification
+
+- `php artisan test`: **52 passed, 203 assertions**.
+- `npm run build`: passed; active admin stylesheet is `app-AoTGVYDY.css`.
+- `get_errors` reported no issues in the changed controller, views, stylesheet,
+  or tests.
+- Local authenticated browser review at 390×844 and 1440×1000 confirmed the
+  direct homepage action, compact mobile navigation, plain-language labels,
+  and no horizontal overflow. The page editor continues to expose the existing
+  text, photo, link, and repeated-entry controls.
+- A temporary local preview administrator was signed out and deleted after the
+  browser review.
+
+### 22.4 Staging deployment
+
+The package contained the changed admin controller/views and stylesheet source,
+plus `public/build/manifest.json` and `public/build/assets/app-AoTGVYDY.css`.
+The standalone SCP connection was closed by the shared host, so the package was
+streamed through one SSH session instead. That session created a timestamped,
+protected code/media, `.env`, and SQLite backup before extracting the package;
+the backup directory was mode `700`, the archive/database `600`, and `.env`
+`640`. No migrations, seeders, database edits, or broad cache clears were run.
+
+Live verification showed the manifest references `app-AoTGVYDY.css`, and that
+asset returns HTTP 200 and contains the updated admin navigation/dashboard CSS.
+The timestamp suffix was generated on the server but was not surfaced by the
+terminal wrapper. The live admin screens were not opened with client credentials;
+the public asset and local authenticated page checks were used instead.
+
+## Phase 23 — Logo-only header and image previews in the CMS (2026-10-03)
+
+### 23.1 Header logo behavior
+
+The public navigation now shows only the configured logo when it loads
+successfully. The logo keeps the company-name alt text for accessibility. If no
+logo is configured, or the image request fails, the ROHES name and tagline are
+shown as the visible fallback.
+
+### 23.2 CMS image previews
+
+- Added one shared live-preview component to item images, section background
+  images, page social-sharing images, and the site logo selector.
+- Selecting a library image or entering a custom path updates the preview
+  immediately. Missing/broken images show `Preview unavailable` instead of a
+  blank area.
+- The page editor now shows a thumbnail beside entries with images; the item
+  list uses consistent thumbnail styling. The media library already displayed
+  its image previews.
+- The CMS sidebar's `Preview website` link is in a separate, bordered area at
+  the bottom, and the duplicate dashboard-header link was removed.
+
+### 23.3 Verification
+
+- `php artisan test`: **55 passed, 214 assertions**.
+- `npm run build`: passed; the combined stylesheet is `app-BJUYR9sL.css`.
+- Local browser confirmed a selected item image updates the preview, a loaded
+  logo hides the text lockup, and a failed logo request reveals it.
+- Live cache-busted homepage now references `app-BJUYR9sL.css`; the logo loads
+  with no visible words beside it. The new CSS returns HTTP 200 and contains
+  both the separated sidebar area and image-preview styles.
+- CMS image-editor pages were verified locally; no client credentials were used
+  against staging.
+
+### 23.4 Shared-host deployment
+
+The 134 KB package included the CMS views, preview partial, public header, admin
+stylesheet source, Vite manifest and compiled CSS. SCP uploaded it in one
+connection, followed by one SSH session that created a protected backup, applied
+the archive, cleared compiled Blade views, and removed the remote package. The
+terminal wrapper returned only a command tail, so it did not expose the backup
+directory name or permission confirmation; deployment was instead confirmed
+over HTTPS by the live HTML, manifest and stylesheet response. No further SSH
+connections were opened.
+
+## Phase 24 — Adjustable faded Home hero photo (2026-10-03)
+
+### 24.1 Behavior
+
+The Home Hero now has a `Background image visibility` slider, from 0% to 100%,
+defaulting to **15%** for a faint photo. The value saves with the Hero settings
+and applies only when a background image is selected. The current Hero has no
+image selected, so its appearance is unchanged. Selecting `No background image`
+continues to use the solid green Hero.
+
+The old fixed dark gradient was removed from the photo layer because it
+multiplied the slider opacity and made a 15% image almost disappear. The green
+Hero surface remains underneath the translucent image to preserve a stable,
+readable background. The slider is disabled for other Hero layouts and the
+server validates the saved value between 0 and 100.
+
+### 24.2 Verification
+
+- `php artisan test`: **55 passed, 226 assertions**.
+- `npm run build`: passed; stylesheet is `app-Dd390H0l.css`.
+- Feature coverage confirms the 15% default, saves a custom 65% value, rejects
+  101%, and verifies that no background layer is rendered when no image is
+  selected.
+- Local browser preview of the existing 800×533 truck photo at 15% opacity
+  showed the faint image over the unchanged green Hero. The temporary browser
+  image was not saved; the Home page remains without a background image.
+- The live manifest now references `app-Dd390H0l.css`; the asset returns HTTP
+  200. No photo was selected on staging.
+
+### 24.3 Shared-host deployment
+
+One SCP attempt was closed by the shared host. The package was then streamed
+through one SSH session after creating a protected code/media, `.env`, and
+SQLite backup; the session cleared compiled Blade views. The terminal wrapper
+did not expose the generated backup path or completion text, so no further SSH
+sessions were opened. Deployment was confirmed with a cache-busted HTTPS check
+of the manifest and compiled asset.

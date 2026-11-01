@@ -37,7 +37,7 @@
     <div class="afield">
         <label for="meta_image">Social sharing image</label>
         @php $metaImage = old('meta_image', $page->meta_image); @endphp
-        <div x-data="{ imagePath: @js($metaImage) }">
+        <div x-data="{ imagePath: @js($metaImage), imageError: false, previewUrl() { return this.imagePath ? new URL(this.imagePath, @js(url('/'))).toString() : '' } }">
             <input type="hidden" name="meta_image" value="{{ $metaImage }}" :value="imagePath">
             <select class="ainput" id="meta_image" x-model="imagePath">
                 <option value="">No social image</option>
@@ -50,6 +50,7 @@
             </select>
             <input class="ainput" type="text" style="margin-top:.5rem" aria-label="Custom social image path"
                    x-model="imagePath" placeholder="Or enter a custom image path">
+                 @include('admin.partials.image-preview')
         </div>
         <p class="hint">Optional. Choose an uploaded image or enter a custom path. This is shown when the page is shared.</p>
         @error('meta_image')<p class="aerror">{{ $message }}</p>@enderror

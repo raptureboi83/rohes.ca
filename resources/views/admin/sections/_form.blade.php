@@ -1,10 +1,10 @@
 @php $fieldPrefix = $fieldPrefix ?? ''; @endphp
 
 <div class="afield">
-    <label for="{{ $fieldPrefix }}title">Section title <span aria-hidden="true">*</span></label>
+    <label for="{{ $fieldPrefix }}title">Heading for this part <span aria-hidden="true">*</span></label>
     <input class="ainput" type="text" id="{{ $fieldPrefix }}title" name="title" value="{{ old('title', $section->title) }}" required
            placeholder="e.g. Our services">
-    <p class="hint">The heading shown above this part of the page.</p>
+    <p class="hint">The heading visitors see above this part of the page.</p>
     @error('title')<p class="aerror">{{ $message }}</p>@enderror
 </div>
 
@@ -17,7 +17,7 @@
 </div>
 
 <div class="afield">
-    <label for="{{ $fieldPrefix }}intro">Intro text (optional)</label>
+    <label for="{{ $fieldPrefix }}intro">Short introduction (optional)</label>
     <textarea class="atextarea" id="{{ $fieldPrefix }}intro" name="intro" rows="3"
               placeholder="One or two sentences introducing this section.">{{ old('intro', $section->intro) }}</textarea>
     <p class="hint">This appears under the section title.</p>
@@ -28,12 +28,12 @@
         tpl: @js(old('template_key', $section->template_key)),
         help: @js(App\Models\Section::TEMPLATE_HELP),
     }">
-    <legend style="font-weight:600;margin-bottom:.4rem">Section options</legend>
+    <legend style="font-weight:600;margin-bottom:.4rem">Content and layout</legend>
 
     @foreach (App\Models\Section::TEMPLATE_SETTINGS as $templateKey => $fields)
         @if ($fields)
             <div x-show="tpl === '{{ $templateKey }}'" x-cloak style="margin-top:1rem">
-                <h3 style="font-size:1rem;margin-bottom:.75rem">{{ App\Models\Section::TEMPLATE_OPTIONS[$templateKey] }} settings</h3>
+                <h3 style="font-size:1rem;margin-bottom:.75rem">{{ App\Models\Section::TEMPLATE_OPTIONS[$templateKey] }} options</h3>
                 @php $previousGroup = null; @endphp
                 @foreach ($fields as $key => $field)
                     @if (($field['group'] ?? null) && $field['group'] !== $previousGroup)
@@ -45,14 +45,16 @@
                     @endif
                     @php
                         $sharedSettingKey = App\Models\Section::SHARED_SETTINGS[$key] ?? null;
-                        $storedValue = $sharedSettingKey ? setting($sharedSettingKey, '') : $section->setting($key, '');
+                        $storedValue = $sharedSettingKey
+                            ? setting($sharedSettingKey, '')
+                            : $section->setting($key, $field['default'] ?? '');
                         $value = old('settings.'.$key, $storedValue);
                     @endphp
                     @if ($field['type'] === 'image')
-                        <div class="afield">
+                        <div class="afield" x-data="{ imagePath: @js($value), imageError: false, previewUrl() { return this.imagePath ? new URL(this.imagePath, @js(url('/'))).toString() : '' } }">
                             <label for="{{ $fieldPrefix }}setting-{{ $templateKey }}-{{ $key }}">{{ $field['label'] }}</label>
                             <select class="ainput" id="{{ $fieldPrefix }}setting-{{ $templateKey }}-{{ $key }}"
-                                    name="settings[{{ $key }}]" :disabled="tpl !== '{{ $templateKey }}'">
+                                    name="settings[{{ $key }}]" x-model="imagePath" :disabled="tpl !== '{{ $templateKey }}'">
                                 <option value="">No background image</option>
                                 @if ($value && ! $availableImages->contains(fn ($image) => $image->url === $value))
                                     <option value="{{ $value }}" selected>Current image (not in the media library)</option>
@@ -63,7 +65,7 @@
                                     </option>
                                 @endforeach
                             </select>
-                            @if ($value)<img src="{{ media_src($value) }}" alt="" style="display:block;max-height:120px;margin-top:.5rem">@endif
+                            @include('admin.partials.image-preview')
                             @if (! empty($field['hint']))<p class="hint">{{ $field['hint'] }}</p>@endif
                             @error('settings.'.$key)<p class="aerror">{{ $message }}</p>@enderror
                         </div>
@@ -73,6 +75,25 @@
                             <input type="checkbox" id="{{ $fieldPrefix }}setting-{{ $templateKey }}-{{ $key }}" name="settings[{{ $key }}]" value="1"
                                    :disabled="tpl !== '{{ $templateKey }}'" @checked((bool) $value)>
                             <label for="{{ $fieldPrefix }}setting-{{ $templateKey }}-{{ $key }}">{{ $field['label'] }}</label>
+                        </div>
+                    @elseif ($field['type'] === 'range')
+                        @php
+                            $rangeMin = (int) ($field['min'] ?? 0);
+                            $rangeMax = (int) ($field['max'] ?? 100);
+                            $rangeValue = max($rangeMin, min($rangeMax, (int) $value));
+                        @endphp
+                        <div class="afield" x-data="{ rangeValue: @js($rangeValue) }">
+                            <label for="{{ $fieldPrefix }}setting-{{ $templateKey }}-{{ $key }}">{{ $field['label'] }}</label>
+                            <div class="admin-range">
+                                <input class="admin-range__input" type="range"
+                                       id="{{ $fieldPrefix }}setting-{{ $templateKey }}-{{ $key }}"
+                                       name="settings[{{ $key }}]" min="{{ $rangeMin }}" max="{{ $rangeMax }}"
+                                        step="{{ $field['step'] ?? 1 }}" x-model="rangeValue"
+                                        :disabled="tpl !== '{{ $templateKey }}'">
+                                <output class="admin-range__value" x-text="rangeValue + '%'">{{ $rangeValue }}%</output>
+                            </div>
+                            @if (! empty($field['hint']))<p class="hint">{{ $field['hint'] }}</p>@endif
+                            @error('settings.'.$key)<p class="aerror">{{ $message }}</p>@enderror
                         </div>
                     @else
                         <div class="afield">
@@ -101,7 +122,7 @@
     @endforeach
 
     <details style="margin-top:1rem">
-        <summary style="cursor:pointer;font-weight:600">Change how this section looks</summary>
+        <summary style="cursor:pointer;font-weight:600">Change this part's layout</summary>
         <p class="hint" style="margin:.6rem 0">Choose a layout. The current choice is {{ App\Models\Section::TEMPLATE_OPTIONS[$section->template_key] ?? $section->template_key }}.</p>
         <div class="template-grid">
             @foreach (App\Models\Section::TEMPLATE_OPTIONS as $key => $label)
@@ -118,7 +139,7 @@
 </fieldset>
 
 <details style="margin-top:1rem">
-    <summary style="cursor:pointer;font-weight:600">More section options</summary>
+    <summary style="cursor:pointer;font-weight:600">Advanced options</summary>
 <div class="form-grid">
     <div class="afield">
         <label for="{{ $fieldPrefix }}slug">Web address</label>
@@ -145,7 +166,7 @@
 <div class="check">
     <input type="checkbox" id="{{ $fieldPrefix }}is_visible" name="is_visible" value="1" @checked(old('is_visible', $section->is_visible ?? true))>
     <label for="{{ $fieldPrefix }}is_visible">
-        Show this section on the page
+    Show this part on the page
         <span class="hint">Uncheck to keep the content but hide it from visitors.</span>
     </label>
 </div>

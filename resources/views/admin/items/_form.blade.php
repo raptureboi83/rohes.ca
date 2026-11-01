@@ -4,7 +4,7 @@
     $imagePath = old('image_path', $item->image_path);
 @endphp
 
-<div x-data="{ type: @js($type), imagePath: @js($imagePath) }">
+<div x-data="{ type: @js($type), imagePath: @js($imagePath), imageError: false, previewUrl() { return this.imagePath ? new URL(this.imagePath, @js(url('/'))).toString() : '' } }">
     <div class="afield">
         <label for="{{ $fieldPrefix }}title">Title</label>
         <input class="ainput" type="text" id="{{ $fieldPrefix }}title" name="title" value="{{ old('title', $item->title) }}"
@@ -60,12 +60,7 @@
         </div>
     </div>
 
-    @if ($imagePath)
-        <div class="afield">
-            <span class="hint">Current image</span>
-            <img src="{{ media_src($imagePath) }}" alt="" style="max-height:120px;border-radius:6px;margin-top:.4rem">
-        </div>
-    @endif
+    @include('admin.partials.image-preview')
 
     <div class="form-grid">
         <div class="afield">
@@ -113,15 +108,15 @@
     @endforeach
 
     <details style="margin-top:1rem">
-        <summary style="cursor:pointer;font-weight:600">More item options</summary>
+        <summary style="cursor:pointer;font-weight:600">Advanced options</summary>
         <div class="afield" style="margin-top:.75rem">
-            <label for="{{ $fieldPrefix }}item_type">Display type</label>
+            <label for="{{ $fieldPrefix }}item_type">Content style</label>
             <select class="ainput" id="{{ $fieldPrefix }}item_type" name="item_type" x-model="type">
                 @foreach (App\Models\SectionItem::ITEM_TYPES as $key => $label)
                     <option value="{{ $key }}" @selected($type === $key)>{{ $label }}</option>
                 @endforeach
             </select>
-            <p class="hint">Usually set automatically from the section. Change this only if an item displays incorrectly.</p>
+            <p class="hint">Usually set automatically. Change this only if the content displays incorrectly.</p>
             @error('item_type')<p class="aerror">{{ $message }}</p>@enderror
         </div>
 

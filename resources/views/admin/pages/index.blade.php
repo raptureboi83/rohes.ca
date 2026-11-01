@@ -5,12 +5,11 @@
 @section('content')
 <div class="admin-head">
     <div>
-        <h1>Pages</h1>
-        <p>Each page is a real web address, e.g. <code>/services</code>.</p>
-            <p>Choose Edit content to update a page's text, links and images directly.</p>
+        <h1>Website pages</h1>
+        <p>Choose a page to change its words, photos or links.</p>
     </div>
     <div class="admin-head__actions">
-        <a href="{{ route('admin.pages.create') }}" class="abtn abtn--primary">+ New page</a>
+        <a href="{{ route('admin.pages.create') }}" class="abtn abtn--primary">Add a page</a>
     </div>
 </div>
 
@@ -19,33 +18,29 @@
         @if ($pages->isEmpty())
             <div class="table-empty">
                 <p>No pages yet.</p>
-                <a href="{{ route('admin.pages.create') }}" class="abtn abtn--primary">Create the first page</a>
+                <a href="{{ route('admin.pages.create') }}" class="abtn abtn--primary">Add the first page</a>
             </div>
         @else
             <div class="table-scroll">
                 <table class="admin-table">
                     <thead>
                         <tr>
-                            <th style="width:70px">Order</th>
                             <th>Page</th>
-                            <th>Sections</th>
-                            <th>Status</th>
-                            <th>Menu</th>
+                            <th>Visible to visitors</th>
+                            <th>In menu</th>
                             <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($pages as $page)
                             <tr>
-                                <td class="muted mono">{{ $page->sort_order }}</td>
                                 <td>
                                     <a href="{{ route('admin.pages.edit', $page) }}" class="admin-table__title">
                                         {{ $page->title }}
                                     </a>
                                     @if ($page->is_home)<span class="pill pill--home" style="margin-left:.4rem">Home</span>@endif
-                                    <div class="admin-table__sub mono">/{{ $page->slug }}</div>
+                                    <div class="admin-table__sub mono">{{ $page->is_home ? '/' : '/'.$page->slug }}</div>
                                 </td>
-                                <td>{{ $page->sections_count }}</td>
                                 <td>
                                     <form method="POST" action="{{ route('admin.pages.toggle', [$page, 'is_active']) }}" class="inline-form">
                                         @csrf @method('PATCH')
@@ -58,18 +53,18 @@
                                     <form method="POST" action="{{ route('admin.pages.toggle', [$page, 'show_in_nav']) }}" class="inline-form">
                                         @csrf @method('PATCH')
                                         <button class="pill {{ $page->show_in_nav ? 'pill--on' : 'pill--off' }} pill--dot" style="border:0;cursor:pointer">
-                                            {{ $page->show_in_nav ? 'Shown' : 'Not in menu' }}
+                                            {{ $page->show_in_nav ? 'In menu' : 'Not in menu' }}
                                         </button>
                                     </form>
                                 </td>
                                 <td>
                                     <div class="admin-table__actions">
-                                        <a href="{{ route('page', $page->slug) }}" target="_blank" rel="noopener" class="abtn abtn--ghost abtn--sm">View</a>
-                                        <a href="{{ route('admin.pages.edit', $page) }}" class="abtn abtn--primary abtn--sm">Edit content</a>
-                                        <a href="{{ route('admin.pages.sections.index', $page) }}" class="abtn abtn--ghost abtn--sm">Structure</a>
+                                        <a href="{{ $page->is_home ? route('home') : route('page', $page->slug) }}" target="_blank" rel="noopener" class="abtn abtn--ghost abtn--sm">Preview</a>
+                                        <a href="{{ route('admin.pages.edit', $page) }}" class="abtn abtn--primary abtn--sm">Edit page</a>
+                                        <a href="{{ route('admin.pages.sections.index', $page) }}" class="abtn abtn--ghost abtn--sm">Reorder content</a>
                                         @unless ($page->is_home)
                                             <form method="POST" action="{{ route('admin.pages.destroy', $page) }}" class="inline-form"
-                                                  onsubmit="return confirm('Delete &quot;{{ $page->title }}&quot; and all of its sections? This cannot be undone.')">
+                                                  onsubmit="return confirm('Delete &quot;{{ $page->title }}&quot; and all of its content? This cannot be undone.')">
                                                 @csrf @method('DELETE')
                                                 <button class="abtn abtn--danger abtn--sm">Delete</button>
                                             </form>

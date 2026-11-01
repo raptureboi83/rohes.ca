@@ -16,15 +16,29 @@
 --}}
 <body class="auth-body">
     <main class="auth-shell">
+        {{-- Suppress the tagline when it only repeats the name. Staging shipped
+             name "Region of Huronia Environmental Services (2013) Ltd." with
+             tagline "Environmental Services", so the sign-in screen said
+             "Environmental Services" twice and the legal string wrapped to three
+             ragged lines beside the logo inside a 26rem column. --}}
+        @php
+            $authShort = (string) setting('site.short_name', 'ROHES');
+            $authTag = trim((string) setting('site.tagline', ''));
+            $authShowTag = $authTag !== ''
+                && ! str_contains(mb_strtolower($authShort), mb_strtolower($authTag))
+                && ! str_contains(mb_strtolower($authTag), mb_strtolower($authShort));
+        @endphp
         <a href="{{ route('home') }}" class="auth-brand">
             @if (setting('site.logo_path'))
-                <img src="{{ setting('site.logo_path') }}" alt="" class="auth-brand__logo">
+                <img src="{{ media_src(setting('site.logo_path')) }}" alt="" class="auth-brand__logo">
             @else
-                <span class="auth-brand__mark" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr(setting('site.short_name', 'ROHES'), 0, 2)) }}</span>
+                <span class="auth-brand__mark" aria-hidden="true">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($authShort, 0, 2)) }}</span>
             @endif
             <span class="auth-brand__text">
-                <b>{{ setting('site.name', 'Region of Huronia Environmental Services') }}</b>
-                <span>{{ setting('site.tagline', 'Site administration') }}</span>
+                {{-- short_name matches the public header and admin sidebar. The full
+                     legal name is not a sign-in-screen label. --}}
+                <b>{{ $authShort }}</b>
+                @if ($authShowTag)<span>{{ $authTag }}</span>@endif
             </span>
         </a>
 

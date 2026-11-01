@@ -141,6 +141,7 @@ class SectionController extends Controller
                 'checkbox' => ['nullable', 'boolean'],
                 'select' => ['nullable', 'string', Rule::in(array_map('strval', array_keys($field['options'])))],
                 'image' => ['nullable', 'string', 'max:255'],
+                'range' => ['nullable', 'integer', 'min:'.($field['min'] ?? 0), 'max:'.($field['max'] ?? 100)],
                 'textarea' => ['nullable', 'string', 'max:2000'],
                 default => $key === 'contact_email'
                     ? ['nullable', 'email', 'max:255']

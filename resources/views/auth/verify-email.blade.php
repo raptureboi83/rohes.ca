@@ -18,8 +18,8 @@
 <form method="POST" action="{{ route('verification.send') }}">
     @csrf
     <div class="auth-actions">
-        <span class="auth-link"><a href="{{ route('admin.dashboard') }}">Skip for now</a></span>
         <button type="submit" class="btn btn--primary">Resend confirmation email</button>
+        <span class="auth-link"><a href="{{ route('admin.dashboard') }}">Skip for now</a></span>
     </div>
 </form>
 @endsection

@@ -1,10 +1,11 @@
 @php
     $t = fn (string $k, $d = null) => $section->setting($k, $d);
     $backgroundImage = $section->setting('background_image');
+    $backgroundOpacity = max(0, min(100, (int) $section->setting('background_opacity', 15)));
 @endphp
 <section id="{{ $section->anchor_id }}" class="hero section-anchor{{ $backgroundImage ? ' hero--with-image' : '' }}">
     @if ($backgroundImage)
-        <div class="hero__background" aria-hidden="true">
+        <div class="hero__background" aria-hidden="true" style="--hero-image-opacity: {{ $backgroundOpacity / 100 }}">
             <img src="{{ media_src($backgroundImage, $section->title) }}" alt="">
         </div>
     @endif

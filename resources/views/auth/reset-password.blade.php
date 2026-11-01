@@ -29,8 +29,8 @@
     </div>
 
     <div class="auth-actions">
-        <span class="auth-link"><a href="{{ route('login') }}">Back to sign in</a></span>
         <button type="submit" class="btn btn--primary">Save new password</button>
+        <span class="auth-link"><a href="{{ route('login') }}">Back to sign in</a></span>
     </div>
 </form>
 @endsection

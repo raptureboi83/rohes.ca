@@ -16,8 +16,8 @@
     </div>
 
     <div class="auth-actions">
-        <span class="auth-link"><a href="{{ route('admin.dashboard') }}">Cancel</a></span>
         <button type="submit" class="btn btn--primary">Confirm</button>
+        <span class="auth-link"><a href="{{ route('admin.dashboard') }}">Cancel</a></span>
     </div>
 </form>
 @endsection

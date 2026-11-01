@@ -108,7 +108,7 @@
 
                         @if ($f['key'] === 'site.logo_path')
                             @php $logoPath = $value; @endphp
-                            <div x-data="{ imagePath: @js($logoPath) }">
+                            <div x-data="{ imagePath: @js($logoPath), imageError: false, previewUrl() { return this.imagePath ? new URL(this.imagePath, @js(url('/'))).toString() : '' } }">
                                 <input type="hidden" name="settings[{{ $f['key'] }}]" value="{{ $logoPath }}" :value="imagePath">
                                 <select class="ainput" id="s-{{ $f['key'] }}" x-model="imagePath">
                                     <option value="">No logo image</option>
@@ -121,6 +121,7 @@
                                 </select>
                                 <input class="ainput" type="text" style="margin-top:.5rem" aria-label="Custom logo path"
                                        x-model="imagePath" placeholder="Or enter a custom image path">
+                                    @include('admin.partials.image-preview')
                             </div>
                         @elseif ($f['type'] === 'textarea')
                             <textarea class="atextarea" id="s-{{ $f['key'] }}" name="settings[{{ $f['key'] }}]" rows="3">{{ $value }}</textarea>

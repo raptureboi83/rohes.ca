@@ -3,104 +3,113 @@
 @section('title', 'Dashboard')
 
 @section('content')
-<div class="admin-head">
+<div class="admin-head dashboard-head">
     <div>
-        <h1>Dashboard</h1>
-        <p>Everything on the public site is edited from here.</p>
+        <h1>Website dashboard</h1>
+        <p>Choose a page to change its words, photos or links.</p>
     </div>
     <div class="admin-head__actions">
-        <a href="{{ route('admin.pages.create') }}" class="abtn abtn--primary">+ New page</a>
-        <a href="{{ route('home') }}" target="_blank" rel="noopener" class="abtn abtn--ghost">View site</a>
-    </div>
-</div>
-
-@if ($missingTemplateCount > 0)
-    <div class="flash flash--error">
-        <span><b>{{ $missingTemplateCount }} section(s) use a layout the site cannot draw.</b>
-        Those sections are hidden from visitors. Open the page and change the layout, or delete the section.</span>
-    </div>
-@endif
-
-<div class="admin-stats">
-    <a href="{{ route('admin.pages.index') }}" class="admin-stat">
-        <b>{{ $pageCount }}</b><span>Pages</span>
-    </a>
-                Choose Edit content to change a page's headings, paragraphs, cards, links and images in one place.
-    </a>
-    <a href="{{ route('admin.pages.index') }}" class="admin-stat">
-                <a href="{{ route('admin.pages.index') }}" class="abtn abtn--primary">Manage page content</a>
-                @if ($contactPage)
-                    <a href="{{ route('admin.pages.edit', $contactPage) }}" class="abtn abtn--ghost">Edit Contact page content</a>
-                @endif
-                <a href="{{ route('admin.settings.index') }}" class="abtn abtn--ghost">Business contact details</a>
-    <a href="{{ route('admin.messages.index') }}" class="admin-stat {{ $unreadCount > 0 ? 'admin-stat--alert' : '' }}">
-        <b>{{ $unreadCount }}</b><span>Unread messages</span>
-    </a>
-    <a href="{{ route('admin.messages.index') }}" class="admin-stat">
-        <b>{{ $inboxCount }}</b><span>Total messages</span>
-    </a>
-    <a href="{{ route('admin.users.index') }}" class="admin-stat">
-        <b>{{ $adminCount }}</b><span>Administrators</span>
-    </a>
-</div>
-
-<div class="admin-card">
-    <div class="admin-card__head">
-        <h2>Recent messages</h2>
-        <div class="spacer"></div>
-        <a href="{{ route('admin.messages.index') }}" class="abtn abtn--ghost abtn--sm">Open inbox</a>
-    </div>
-    <div class="admin-card__body admin-card__body--flush">
-        @if ($recentMessages->isEmpty())
-            <div class="table-empty">
-                <p>No messages yet. Enquiries from the website contact form land here.</p>
-            </div>
+        @if ($homePage && $homePage->is_active)
+            <a href="{{ route('admin.pages.edit', $homePage) }}" class="abtn abtn--primary">Edit home page</a>
         @else
-            <div class="table-scroll">
-                <table class="admin-table">
-                    <thead>
-                        <tr><th>From</th><th>Subject</th><th>Received</th><th></th></tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($recentMessages as $message)
-                            <tr class="{{ $message->is_read ? '' : 'msg-row--unread' }}">
-                                <td>
-                                    <div class="msg-row">
-                                        <span class="avatar">{{ $message->initials }}</span>
-                                        <span>
-                                            <b>{{ $message->name }}</b><br>
-                                            <span class="admin-table__sub">{{ $message->email }}</span>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td>
-                                    @if (! $message->is_read)<span class="dot" title="Unread"></span> @endif
-                                    {{ $message->subject ?: 'No subject' }}
-                                </td>
-                                <td class="nowrap muted small">{{ $message->created_at->diffForHumans() }}</td>
-                                <td class="text-right">
-                                    <a href="{{ route('admin.messages.show', $message) }}" class="abtn abtn--ghost abtn--sm">Open</a>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+            <a href="{{ route('admin.pages.index') }}" class="abtn abtn--primary">Choose home page</a>
         @endif
     </div>
 </div>
 
-<div class="admin-card">
-    <div class="admin-card__head"><h2>Pages</h2></div>
-    <div class="admin-card__body">
-        <p class="muted small" style="margin-bottom:1rem">
-            A page is built from sections, and a section is built from content items.
-            You can add, reorder, hide and delete all of them without touching code.
-        </p>
-        <div class="btn-row">
-            <a href="{{ route('admin.pages.index') }}" class="abtn abtn--ghost">Manage pages</a>
-            <a href="{{ route('admin.settings.index') }}" class="abtn abtn--ghost">Edit contact details</a>
+{{-- Only rendered when something is actually wrong. See DashboardController::attentionItems. --}}
+@if (count($attention))
+    <div class="admin-card admin-card--attention">
+        <div class="admin-card__head">
+            <h2>Things to check</h2>
+            <div class="spacer"></div>
+            <span class="muted small">{{ count($attention) }} item{{ count($attention) === 1 ? '' : 's' }}</span>
         </div>
+        <ul class="attention-list">
+            @foreach ($attention as $item)
+                <li class="attention attention--{{ $item['severity'] }}">
+                    <span>{{ $item['message'] }}</span>
+                    @if ($item['url'])
+                        <a href="{{ $item['url'] }}" class="abtn abtn--ghost abtn--sm">{{ $item['action'] }}</a>
+                    @endif
+                </li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+{{-- Unread enquiries are the only thing on this screen that can be time-sensitive,
+     so they get a full-width slot and disappear once they are all read. --}}
+@if ($unreadCount > 0)
+    <div class="admin-card admin-card--unread">
+        <div class="admin-card__head">
+            <h2>Messages to read</h2>
+            <span class="pill pill--home">{{ $unreadCount }}</span>
+            <div class="spacer"></div>
+            <a href="{{ route('admin.messages.index') }}" class="abtn abtn--primary abtn--sm">Open messages</a>
+        </div>
+        @if ($recentMessages->isNotEmpty())
+            <ul class="attention-list">
+                @foreach ($recentMessages as $message)
+                    <li class="attention attention--error">
+                        <span>
+                            <b>{{ $message->name }}</b>
+                            &mdash; {{ $message->subject ?: 'No subject' }}
+                            <span class="muted small">{{ $message->created_at->diffForHumans() }}</span>
+                        </span>
+                        <a href="{{ route('admin.messages.show', $message) }}" class="abtn abtn--ghost abtn--sm">Open</a>
+                    </li>
+                @endforeach
+            </ul>
+        @endif
+    </div>
+@endif
+
+<div class="dash-cols">
+    <div class="admin-card">
+        <div class="admin-card__head">
+            <h2>Website pages</h2>
+            <div class="spacer"></div>
+            <a href="{{ route('admin.pages.create') }}" class="abtn abtn--ghost abtn--sm">Add a page</a>
+        </div>
+        <ul class="page-list">
+            @forelse ($pages as $page)
+                <li class="page-list__row">
+                    <span>
+                        <b>{{ $page->display_label }}</b>
+                        <span class="page-list__meta">
+                            @if ($page->is_home)Home page @else /{{ $page->slug }}@endif
+                            @if ($page->is_active)<span class="pill pill--on">Live</span>@else<span class="pill pill--warn">Hidden</span>@endif
+                        </span>
+                    </span>
+                    <a href="{{ route('admin.pages.edit', $page) }}" class="abtn abtn--ghost abtn--sm">Edit page</a>
+                </li>
+            @empty
+                <li class="table-empty"><p>No pages yet.</p></li>
+            @endforelse
+        </ul>
+    </div>
+
+    <div class="admin-card">
+        <div class="admin-card__head">
+            <h2>Recently updated</h2>
+        </div>
+        <ul class="page-list">
+            @forelse ($recentlyUpdated as $section)
+                <li class="page-list__row">
+                    <span>
+                        <b>{{ $section->title ?: 'Untitled section' }}</b>
+                        <span class="page-list__meta">
+                            {{ $section->page?->display_label }} &middot; {{ $section->updated_at->diffForHumans() }}
+                        </span>
+                    </span>
+                    <a href="{{ route('admin.pages.edit', $section->page) }}" class="abtn abtn--ghost abtn--sm">Open page</a>
+                </li>
+            @empty
+                <li class="table-empty"><p>Nothing has been edited yet.</p></li>
+            @endforelse
+        </ul>
     </div>
 </div>
+
 @endsection

@@ -68,7 +68,7 @@
                                 <td><span class="pill">{{ $item->type_label }}</span></td>
                                 <td>
                                     @if ($item->image_path)
-                                        <img src="{{ media_src($item->image_path) }}" alt="" style="max-height:44px;border-radius:4px">
+                                        <img class="admin-image-thumb" src="{{ media_src($item->image_path) }}" alt="">
                                     @else
                                         <span class="muted small">none</span>
                                     @endif
